@@ -41,9 +41,9 @@
   --r-lg:  12px;
   --r-xl:  16px;
 
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
+  font-family: 'Be Vietnam Pro', 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
   color: var(--c-text);
   background: var(--c-bg);
   -webkit-font-smoothing: antialiased;
@@ -127,3 +127,88 @@ p { margin: 0; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #f1f1f1; }
 ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+
+/* ═══════════════════════════════════════════════
+   Scroll Reveal Animations
+   ═══════════════════════════════════════════════ */
+
+/* Base transitions (always present) */
+.reveal {
+  transition: opacity 0.65s cubic-bezier(.22,1,.36,1),
+              transform 0.65s cubic-bezier(.22,1,.36,1);
+}
+
+/* Only hide when JS has opted them into animation */
+.reveal.will-animate:not(.is-visible)               { opacity: 0; transform: translateY(32px); }
+.reveal.will-animate.reveal--left:not(.is-visible)  { opacity: 0; transform: translateX(-40px); }
+.reveal.will-animate.reveal--right:not(.is-visible) { opacity: 0; transform: translateX(40px); }
+.reveal.will-animate.reveal--scale:not(.is-visible) { opacity: 0; transform: scale(0.93); }
+
+/* When visible: snap to position */
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Staggered children */
+.reveal-stagger > * {
+  transition: opacity 0.5s cubic-bezier(.22,1,.36,1),
+              transform 0.5s cubic-bezier(.22,1,.36,1);
+}
+.reveal-stagger.will-animate > *:not(.is-visible) { opacity: 0; transform: translateY(24px); }
+.reveal-stagger.is-visible > *:nth-child(1) { opacity: 1; transform: none; transition-delay: 0.05s; }
+.reveal-stagger.is-visible > *:nth-child(2) { opacity: 1; transform: none; transition-delay: 0.15s; }
+.reveal-stagger.is-visible > *:nth-child(3) { opacity: 1; transform: none; transition-delay: 0.25s; }
+.reveal-stagger.is-visible > *:nth-child(4) { opacity: 1; transform: none; transition-delay: 0.35s; }
+.reveal-stagger.is-visible > *:nth-child(5) { opacity: 1; transform: none; transition-delay: 0.45s; }
+
+/* Delay helpers */
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* Counter number animation */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px) scale(0.9); }
+  to   { opacity: 1; transform: none; }
+}
+.stat-value.animate {
+  animation: countUp 0.6s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* Floating animation for hero decorations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+.float-anim { animation: float 4s ease-in-out infinite; }
+.float-anim-slow { animation: float 6s ease-in-out infinite; }
+
+/* Hero text slide-up — forwards only (starts visible, animates to final pos) */
+@keyframes heroSlideUp {
+  from { opacity: 0.3; transform: translateY(18px); }
+  to   { opacity: 1;   transform: none; }
+}
+.hero-text {
+  animation: heroSlideUp 0.7s cubic-bezier(.22,1,.36,1) forwards;
+  /* default visible so no flash if animation hasn't started */
+  opacity: 1;
+}
+.hero-text-delay-1 { animation-delay: 0.10s; }
+.hero-text-delay-2 { animation-delay: 0.22s; }
+.hero-text-delay-3 { animation-delay: 0.34s; }
+.hero-text-delay-4 { animation-delay: 0.46s; }
+
+/* Mobile nav hamburger */
+.hamburger-line {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: white;
+  border-radius: 2px;
+  transition: transform 0.3s, opacity 0.3s;
+}
+.hamburger-open .hamburger-line:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.hamburger-open .hamburger-line:nth-child(2) { opacity: 0; }
+.hamburger-open .hamburger-line:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
