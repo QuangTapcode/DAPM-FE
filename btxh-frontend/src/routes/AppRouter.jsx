@@ -15,6 +15,7 @@ import LoginPage from '../pages/guest/LoginPage';
 import RegisterPage from '../pages/guest/RegisterPage';
 
 // ─── Sender ───────────────────────────────────────────
+import SenderDashboard from '../pages/sender/SenderDashboard';
 import CreateChildRequest from '../pages/sender/CreateChildRequest';
 import UpdateChildRequest from '../pages/sender/UpdateChildRequest';
 import RequestStatus from '../pages/sender/RequestStatus';
@@ -90,6 +91,7 @@ export default function AppRouter() {
 
         {/* ── Sender /gui-tre/* ───────────────────────── */}
         <Route element={<Guard roles={[ROLES.SENDER]} layout={UserLayout} />}>
+          <Route path="/gui-tre/dashboard" element={<SenderDashboard />} />
           <Route path="/gui-tre/tao-yeu-cau" element={<CreateChildRequest />} />
           <Route path="/gui-tre/cap-nhat/:id" element={<UpdateChildRequest />} />
           <Route path="/gui-tre/trang-thai" element={<RequestStatus />} />
