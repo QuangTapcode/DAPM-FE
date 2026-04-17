@@ -5,19 +5,19 @@ import { ROLES, ROLE_REDIRECT } from '../../utils/constants';
 
 const ROLE_NAV = {
   [ROLES.SENDER]: [
-    { to: '/gui-tre/dashboard',   label: 'Tổng quan' },
-    { to: '/gui-tre/tao-yeu-cau', label: 'Giao trẻ' },
-    { to: '/gui-tre/trang-thai',  label: 'Trạng thái' },
+    { to: '/gui-tre/dashboard', label: 'Tổng quan' },
+    { to: '/gui-tre/tao-yeu-cau', label: 'Gửi trẻ' },
+    { to: '/gui-tre/trang-thai', label: 'Trạng thái' },
   ],
   [ROLES.ADOPTER]: [
-    { to: '/nhan-nuoi/dashboard',     label: 'Tổng quan' },
-    { to: '/nhan-nuoi/danh-sach-tre', label: 'Danh sách trẻ' },
-    { to: '/nhan-nuoi/trang-thai',    label: 'Đơn của tôi' },
+    { to: '/nhan-nuoi/dashboard', label: 'Tổng quan' },
+    { to: '/nhan-nuoi/tao-don', label: 'Nhận nuôi' },
+    { to: '/nhan-nuoi/trang-thai', label: 'Đơn nhận nuôi' },
   ],
   [ROLES.STAFF_RECEPTION]: [
     { to: '/can-bo-tiep-nhan/dashboard', label: 'Tổng quan' },
-    { to: '/can-bo-tiep-nhan/yeu-cau',   label: 'Yêu cầu' },
-    { to: '/can-bo-tiep-nhan/tre',       label: 'Quản lý trẻ' },
+    { to: '/can-bo-tiep-nhan/yeu-cau', label: 'Yêu cầu' },
+    { to: '/can-bo-tiep-nhan/tre', label: 'Quản lý trẻ' },
   ],
   [ROLES.STAFF_ADOPTION]: [
     { to: '/can-bo-nhan-nuoi/dashboard', label: 'Tổng quan' },
@@ -26,18 +26,18 @@ const ROLE_NAV = {
   [ROLES.MANAGER]: [
     { to: '/truong-phong/dashboard', label: 'Tổng quan' },
     { to: '/truong-phong/cho-duyet', label: 'Chờ duyệt' },
-    { to: '/truong-phong/thong-ke',  label: 'Thống kê' },
+    { to: '/truong-phong/thong-ke', label: 'Thống kê' },
   ],
   [ROLES.ADMIN]: [
     { to: '/admin/dashboard', label: 'Tổng quan' },
-    { to: '/admin/accounts',  label: 'Tài khoản' },
-    { to: '/admin/roles',     label: 'Phân quyền' },
+    { to: '/admin/accounts', label: 'Tài khoản' },
+    { to: '/admin/roles', label: 'Phân quyền' },
   ],
 };
 
 const GUEST_NAV = [
-  { to: '/',           label: 'Trang chủ' },
-  { to: '/huong-dan',  label: 'Hướng dẫn' },
+  { to: '/', label: 'Trang chủ' },
+  { to: '/huong-dan', label: 'Hướng dẫn' },
 ];
 
 function BellIcon() {
@@ -149,10 +149,9 @@ export default function Navbar() {
               to={link.to}
               end={link.to === '/'}
               className={({ isActive }) =>
-                `px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                  isActive
-                    ? 'border-[#f97316] text-white'
-                    : 'border-transparent text-blue-200 hover:text-white hover:border-white/40'
+                `px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${isActive
+                  ? 'border-[#f97316] text-white'
+                  : 'border-transparent text-blue-200 hover:text-white hover:border-white/40'
                 }`
               }
             >

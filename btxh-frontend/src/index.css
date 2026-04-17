@@ -42,8 +42,8 @@
   --r-xl:  16px;
 
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 18px;
+  line-height: 1.6;
   color: var(--c-text);
   background: var(--c-bg);
   -webkit-font-smoothing: antialiased;
@@ -76,7 +76,7 @@ p { margin: 0; }
   margin-bottom: 1rem;
 }
 .section-card__header {
-  background: var(--c-primary);
+  background: linear-gradient(135deg, #daeeff 0%, #c8e8fa 40%, #d6f0fb 100%);
   padding: 12px 20px;
   display: flex;
   align-items: center;

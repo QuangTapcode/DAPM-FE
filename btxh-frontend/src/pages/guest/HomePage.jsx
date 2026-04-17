@@ -1,3 +1,5 @@
+import Anh1 from "../../assets/Anh1_Home.jpg";
+import Anh2 from "../../assets/Anh2_Home.jpg";
 export default function HomePage() {
   const features = [
     {
@@ -116,7 +118,7 @@ export default function HomePage() {
           box-shadow: 0 14px 34px rgba(13, 71, 161, 0.12);
         }
 
-         .feat-row { display:flex; align-items:center; gap:48px; padding:40px 0; position:relative; }
+        .feat-row { display:flex; align-items:center; gap:48px; padding:40px 0; position:relative; }
         .feat-row:not(:last-child)::after { content:''; position:absolute; left:50%; bottom:0; transform:translateX(-50%); width:1px; height:1px; }
         .feat-row.reverse { flex-direction:row-reverse; text-align:right; }
         .feat-circle-wrap { flex-shrink:0; display:flex; align-items:center; justify-content:center; }
@@ -127,36 +129,6 @@ export default function HomePage() {
         .feat-desc { font-size:15.5px; line-height:1.85; color:#607080; margin:0; max-width:420px; }
         .feat-row.reverse .feat-desc { margin-left:auto; }
         .feat-icon-float { position:absolute; opacity:0.55; }
-
-        // .feature-card {
-        //   display: flex;
-        //   gap: 22px;
-        //   align-items: flex-start;
-        //   background: #ffffff;
-        //   border: 1px solid #e4edf8;
-        //   border-radius: 20px;
-        //   padding: 24px;
-        //   transition: all 0.3s ease;
-        // }
-
-        // .feature-card:hover {
-        //   transform: translateY(-5px);
-        //   box-shadow: 0 16px 32px rgba(13, 71, 161, 0.10);
-        //   border-color: #cfe2fb;
-        // }
-
-        // .feature-title {
-        //   font-size: 18px;
-        //   font-weight: 700;
-        //   color: #1a2a3a;
-        //   margin: 0 0 8px;
-        //   transition: all 0.25s ease;
-        // }
-
-        // .feature-card:hover .feature-title {
-        //   font-size: 19px;
-        //   color: #0D47A1;
-        // }
 
         .quote-box {
           text-align: center;
@@ -267,7 +239,7 @@ export default function HomePage() {
               }}
             />
             <img
-              src="/images/Anh1_Home.jpg"
+              src={Anh1}
               alt="Trẻ em tại trung tâm"
               className="image-card"
             />
@@ -357,7 +329,7 @@ export default function HomePage() {
               }}
             />
             <img
-              src="/images/Anh2_Home.jpg"
+              src={Anh2}
               alt="Gia đình nhận nuôi"
               className="image-card"
             />

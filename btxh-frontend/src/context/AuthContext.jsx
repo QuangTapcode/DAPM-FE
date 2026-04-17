@@ -11,8 +11,12 @@ export function AuthProvider({ children }) {
     const token = localStorage.getItem('token');
     if (token) {
       authApi.getProfile()
-        .then(setUser)
-        .catch(() => localStorage.removeItem('token'))
+        .then((user) => {
+          setUser(user);
+        })
+        .catch(() => {
+          localStorage.removeItem('token');
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -27,7 +31,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await authApi.logout().catch(() => {});
+    await authApi.logout().catch(() => { });
     localStorage.removeItem('token');
     setUser(null);
   }, []);

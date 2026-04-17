@@ -1,83 +1,142 @@
 import { Link } from 'react-router-dom';
-
+import email_2 from '../../assets/email_2.png';
+import email_1 from '../../assets/icon_email.png';
+import icon_fb from '../../assets/icon_fb.png';
+import icon_ytb from '../../assets/icon_ytb.png';
+import icon_address from '../../assets/icon_address.png';
+import icon_phone from '../../assets/icon_phone.png';
+import contact_now from '../../assets/contact_now.png';
 const QUICK_LINKS = [
-  { to: '/',           label: 'Trang chủ' },
-  { to: '/huong-dan',  label: 'Hướng dẫn sử dụng' },
-  { to: '/dang-ky',    label: 'Đăng ký tài khoản' },
-  { to: '/dang-nhap',  label: 'Đăng nhập' },
+  { to: '/', label: 'Trang chủ' },
+  { to: '/gui-tre/tao-yeu-cau', label: 'Đăng ký gửi trẻ' },
+  { to: '/nhan-nuoi/tao-don', label: 'Đăng ký nhận nuôi' },
+  { to: '/huong-dan', label: 'Hướng dẫn' },
 ];
 
 export default function Footer() {
   return (
-    <footer className="bg-[#1e3a5f] text-blue-100 mt-auto">
-      <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Col 1 — Brand */}
-        <div>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7a1 1 0 0 0 1.414 1.414L4 10.414V17a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-3h2v3a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6.586l.293.293a1 1 0 0 0 1.414-1.414l-7-7z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-white font-bold text-sm">TRUNG TÂM BẢO TRỢ XÃ HỘI</p>
-              <p className="text-blue-300 text-xs">Hệ thống quản lý trực tuyến</p>
+    <footer
+      className="mt-auto"
+      style={{ background: 'linear-gradient(135deg, #daeeff 0%, #c8e8fa 40%, #d6f0fb 100%)' }}
+    >
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-y-8 gap-x-8">
+
+          {/* Col 1 */}
+          <div className="flex">
+            <div className="w-full max-w-[270px] mx-auto flex flex-col">
+              <div className="flex items-center gap-3 mb-4 min-h-[48px]">
+                <img src="/favicon.svg" alt="Logo" className="w-12 h-12 object-contain" />
+                <p className="text-[#1a5fa8] font-bold text-sm leading-tight">
+                  TRUNG TÂM BẢO TRỢ<br />XÃ HỘI
+                </p>
+              </div>
+
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                Hệ Thống Quản Lý Bảo Trợ Trẻ Em – Sứ mệnh của chúng tôi là bảo vệ, kết
+                nối và mang lại mái ấm yêu thương cho những trẻ em mồ côi, xây dựng
+                một tương lai tươi sáng hơn.
+              </p>
+
+              <div className="flex gap-2 mt-auto">
+                <a
+                  href="#"
+                  className="w-8 h-8 rounded-full border border-[#7ec8f0] bg-white flex items-center justify-center hover:bg-[#e0f3ff] transition"
+                  title="Facebook"
+                >
+                  <img src={icon_fb} alt="Facebook" className="w-4 h-4 object-contain" />
+                </a>
+                <a
+                  href="mailto:ttbtxhtremocoi@gmail.com"
+                  className="w-8 h-8 rounded-full border border-[#7ec8f0] bg-white flex items-center justify-center hover:bg-[#e0f3ff] transition"
+                  title="Email"
+                >
+                  <img src={email_1} alt="Email" className="w-4 h-4 object-contain" />
+                </a>
+                <a
+                  href="#"
+                  className="w-8 h-8 rounded-full border border-[#7ec8f0] bg-white flex items-center justify-center hover:bg-[#e0f3ff] transition"
+                  title="YouTube"
+                >
+                  <img src={icon_ytb} alt="YouTube" className="w-4 h-4 object-contain" />
+                </a>
+              </div>
             </div>
           </div>
-          <p className="text-sm text-blue-200 leading-relaxed">
-            Hỗ trợ, chăm sóc và kết nối trẻ em có hoàn cảnh đặc biệt với những gia đình yêu thương.
-          </p>
-          {/* Social */}
-          <div className="flex gap-2 mt-4">
-            {['facebook', 'youtube', 'email'].map((s) => (
-              <button key={s}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
-                title={s}
-              >
-                <span className="text-xs text-blue-200 capitalize">{s[0].toUpperCase()}</span>
-              </button>
-            ))}
+
+          {/* Col 2 */}
+          <div className="flex">
+            <div className="w-full max-w-[270px] mx-auto lg:ml-10 flex flex-col">
+              <h3 className="text-[#1a5fa8] font-bold text-sm uppercase tracking-wide mb-4 min-h-[48px] flex items-start">
+                Liên kết nhanh
+              </h3>
+
+              <ul className="space-y-2.5 text-sm text-gray-700">
+                {QUICK_LINKS.map((l) => (
+                  <li key={l.to}>
+                    <Link
+                      to={l.to}
+                      className="hover:text-[#1a5fa8] transition flex items-center gap-1.5"
+                    >
+                      <span className="text-[#1a5fa8] font-bold">›</span>
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-        </div>
 
-        {/* Col 2 — Quick links */}
-        <div>
-          <h3 className="text-white font-semibold text-sm mb-3">Liên kết nhanh</h3>
-          <ul className="space-y-2">
-            {QUICK_LINKS.map((l) => (
-              <li key={l.to}>
-                <Link to={l.to} className="text-sm text-blue-200 hover:text-white transition flex items-center gap-1.5">
-                  <span className="text-[#f97316]">›</span>
-                  {l.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+          {/* Col 3 */}
+          <div className="flex">
+            <div className="w-full max-w-[270px] mx-auto flex flex-col">
+              <h3 className="text-[#1a5fa8] font-bold text-sm uppercase tracking-wide mb-4 min-h-[48px] flex items-start">
+                Thông tin liên hệ
+              </h3>
 
-        {/* Col 3 — Contact */}
-        <div>
-          <h3 className="text-white font-semibold text-sm mb-3">Thông tin liên hệ</h3>
-          <ul className="space-y-2 text-sm text-blue-200">
-            <li className="flex items-start gap-2">
-              <span className="text-[#f97316] mt-0.5">📍</span>
-              <span>123 Đường ABC, Phường XYZ, TP. Hồ Chí Minh</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="text-[#f97316]">📞</span>
-              <span>0961 234 567 &ndash; 028 3456 7890</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="text-[#f97316]">✉️</span>
-              <span>btxh@example.gov.vn</span>
-            </li>
-          </ul>
+              <ul className="space-y-2.5 text-sm text-gray-700">
+                <li className="flex items-start gap-2">
+                  <img src={icon_address} alt="Địa chỉ" className="w-4 h-4 object-contain mt-0.5 flex-shrink-0" />
+                  <span>123 Hải Phòng, Hải Châu<br />TP. Đà Nẵng</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <img src={icon_phone} alt="Điện thoại" className="w-4 h-4 object-contain flex-shrink-0" />
+                  <span>0901 234 567</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <img src={email_2} alt="Email" className="w-4 h-4 object-contain flex-shrink-0" />
+                  <span>ttbtxhtremocoi@gmail.com</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Col 4 */}
+          <div className="flex">
+            <div className="w-full max-w-[270px] mx-auto flex flex-col">
+              <h3 className="text-[#1a5fa8] font-bold text-sm uppercase tracking-wide mb-4 min-h-[48px] flex items-start">
+                Hỗ trợ khẩn cấp
+              </h3>
+
+              <div className="bg-white rounded-xl p-4 text-sm text-gray-600 leading-relaxed flex flex-col gap-4 min-h-[148px]">
+                <p>
+                  Cần hỗ trợ ngay? Liên hệ với chúng tôi qua hotline 24/7 để được giải
+                  đáp mọi thắc mắc.
+                </p>
+                <button className="w-full bg-[#1a5fa8] hover:bg-[#154d8a] text-white text-sm font-semibold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition">
+                  <img src={contact_now} alt="" className="w-4 h-4 object-contain" />
+                  Tư vấn ngay
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Bottom bar */}
-      <div className="border-t border-white/10 px-6 py-3 text-center text-xs text-blue-300">
-        &copy; {new Date().getFullYear()} Trung Tâm Bảo Trợ Xã Hội &mdash; Bản quyền thuộc về đơn vị quản lý
+      <div className="border-t border-[#b8d9f0]">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-3 text-xs text-gray-500">
+          ©2026 Copyright All By Trung Tam Bao Tro Xa Hoi
+        </div>
       </div>
     </footer>
   );
