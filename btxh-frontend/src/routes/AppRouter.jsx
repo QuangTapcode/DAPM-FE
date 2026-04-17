@@ -32,6 +32,8 @@ import AdoptionStatus          from '../pages/adopter/AdoptionStatus';
 import AdopterProfile          from '../pages/adopter/AdopterProfile';
 
 // ─── Staff Reception ──────────────────────────────────
+// CapNhatHoSo đã gộp vào ChildForm
+import Dashboard               from '../pages/staff-reception/Dashboard';
 import ReceptionDashboard      from '../pages/staff-reception/ReceptionDashboard';
 import ChildRequestList        from '../pages/staff-reception/ChildRequestList';
 import ChildRequestDetail      from '../pages/staff-reception/ChildRequestDetail';
@@ -83,9 +85,11 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* ── Redirect root → preview ──────────────── */}
+        <Route path="/" element={<Navigate to="/preview" replace />} />
+
         {/* ── Public ─────────────────────────────────── */}
         <Route element={<GuestLayout />}>
-          <Route path="/"          element={<HomePage />} />
           <Route path="/huong-dan" element={<GuidePage />} />
           <Route path="/dang-nhap" element={<LoginPage />} />
           <Route path="/dang-ky"   element={<RegisterPage />} />
@@ -114,6 +118,7 @@ export default function AppRouter() {
 
         {/* ── Staff Reception /can-bo-tiep-nhan/* ─────── */}
         <Route element={<Guard roles={[ROLES.STAFF_RECEPTION]} layout={UserLayout} />}>
+          <Route path="/cap-nhat-ho-so" element={<Navigate to="/can-bo-tiep-nhan/tre/tao" replace />} />
           <Route path="/can-bo-tiep-nhan/dashboard"                       element={<ReceptionDashboard />} />
           <Route path="/can-bo-tiep-nhan/yeu-cau"                         element={<ChildRequestList />} />
           <Route path="/can-bo-tiep-nhan/yeu-cau/:id"                     element={<ChildRequestDetail />} />
@@ -151,6 +156,27 @@ export default function AppRouter() {
           <Route path="/admin/accounts/new"    element={<AccountForm />} />
           <Route path="/admin/accounts/:id/edit" element={<AccountForm />} />
           <Route path="/admin/roles"           element={<RoleManagement />} />
+        </Route>
+
+        {/* ── Preview (không cần login) — layout Dashboard + Outlet ── */}
+        <Route element={<Dashboard />}>
+          <Route path="/preview"                                    element={<ReceptionDashboard />} />
+          <Route path="/preview/dashboard"                          element={<ReceptionDashboard />} />
+          <Route path="/preview/yeu-cau"                            element={<ChildRequestList />} />
+          <Route path="/preview/yeu-cau/:id"                        element={<ChildRequestDetail />} />
+          <Route path="/preview/chi-tiet"                           element={<ChildRequestDetail />} />
+          <Route path="/preview/tao-ho-so/:requestId"               element={<CreateReceptionProfile />} />
+          <Route path="/preview/tiep-nhan"                          element={<CreateReceptionProfile />} />
+          <Route path="/preview/danh-sach-tre"                      element={<ChildList />} />
+          <Route path="/preview/tre"                                element={<ChildList />} />
+          <Route path="/preview/tre/tao"                            element={<ChildForm />} />
+          <Route path="/preview/tre/:id/sua"                        element={<ChildForm />} />
+          <Route path="/preview/ho-so"                              element={<ChildForm />} />
+          <Route path="/preview/tre/:childId/suc-khoe"              element={<ChildHealthList />} />
+          <Route path="/preview/suc-khoe"                           element={<ChildHealthList />} />
+          <Route path="/preview/tre/:childId/suc-khoe/tao"          element={<ChildHealthForm />} />
+          <Route path="/preview/tre/:childId/suc-khoe/:id/sua"      element={<ChildHealthForm />} />
+          <Route path="/preview/kham-moi"                           element={<ChildHealthForm />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

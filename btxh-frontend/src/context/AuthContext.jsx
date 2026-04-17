@@ -4,7 +4,10 @@ import authApi from '../api/authApi';
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+const [user, setUser] = useState({
+  name: "test",
+  role: "staff_reception"
+});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
