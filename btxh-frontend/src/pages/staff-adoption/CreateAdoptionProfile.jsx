@@ -62,5 +62,5 @@ export default function CreateAdoptionProfile() {
         </div>
       </form>
     </div>
-  );
+);
 }
