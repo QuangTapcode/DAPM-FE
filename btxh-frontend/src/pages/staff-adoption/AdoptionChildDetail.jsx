@@ -12,7 +12,7 @@ function InfoRow({ label, value }) {
     </div>
   );
 }
-
+//phuong test
 export default function AdoptionChildDetail() {
   const { id } = useParams();
   const { data: child, loading } = useFetch(() => childApi.getById(id));
