@@ -40,13 +40,13 @@ export default function UserLayout() {
   const menuItems = MENU_BY_ROLE[user?.role] || [];
 
   return (
-    <div className="relative min-h-screen bg-gray-50">
+    <div className="relative min-h-screen bg-[#F5F9FE]">
       <div className="absolute left-0 top-0 bottom-0 z-30 w-60">
         <Sidebar menuItems={menuItems} />
       </div>
 
       <div className="flex min-h-screen flex-col">
-        <main className="flex-1 ml-60 bg-gray-50 p-6">
+        <main className="flex-1 ml-60 bg-[#F5F9FE] p-6">
           <Outlet />
         </main>
 

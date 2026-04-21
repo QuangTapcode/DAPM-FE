@@ -110,6 +110,7 @@ export default function AppRouter() {
         {/* ── Staff Reception /can-bo-tiep-nhan/* ─────── */}
         <Route element={<Guard roles={[ROLES.STAFF_RECEPTION]} layout={UserLayout} />}>
           <Route path="/can-bo-tiep-nhan/dashboard" element={<ReceptionDashboard />} />
+          {/* Routes dùng path params (cũ) */}
           <Route path="/can-bo-tiep-nhan/yeu-cau" element={<ChildRequestList />} />
           <Route path="/can-bo-tiep-nhan/yeu-cau/:id" element={<ChildRequestDetail />} />
           <Route path="/can-bo-tiep-nhan/tao-ho-so/:requestId" element={<CreateReceptionProfile />} />
@@ -119,6 +120,11 @@ export default function AppRouter() {
           <Route path="/can-bo-tiep-nhan/tre/:childId/suc-khoe" element={<ChildHealthList />} />
           <Route path="/can-bo-tiep-nhan/tre/:childId/suc-khoe/tao" element={<ChildHealthForm />} />
           <Route path="/can-bo-tiep-nhan/tre/:childId/suc-khoe/:id/sua" element={<ChildHealthForm />} />
+          {/* Routes dùng query params — theo convention của Viet's pages */}
+          <Route path="/can-bo-tiep-nhan/chi-tiet" element={<ChildRequestDetail />} />
+          <Route path="/can-bo-tiep-nhan/tiep-nhan" element={<CreateReceptionProfile />} />
+          <Route path="/can-bo-tiep-nhan/ho-so" element={<ChildForm />} />
+          <Route path="/can-bo-tiep-nhan/suc-khoe" element={<ChildHealthList />} />
         </Route>
 
         {/* ── Staff Adoption /can-bo-nhan-nuoi/* ─────── */}
