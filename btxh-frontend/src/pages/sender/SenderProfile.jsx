@@ -1,8 +1,5 @@
 import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FormField, inputCls, selectCls } from '../../components/common/FormField';
-import Button from '../../components/common/Button';
-import PageHeader from '../../components/common/PageHeader';
 
 const MOCK_USER = {
   fullName: 'Nguyễn Thị Lan',
@@ -17,191 +14,233 @@ const MOCK_USER = {
 };
 
 const COMPLETION = [
-  { label: 'Họ và tên',    done: true },
+  { label: 'Họ và tên', done: true },
   { label: 'Số điện thoại', done: true },
-  { label: 'Ngày sinh',    done: true },
-  { label: 'Email',        done: true },
-  { label: 'Địa chỉ',     done: false },
+  { label: 'Ngày sinh', done: true },
+  { label: 'Email', done: true },
+  { label: 'Địa chỉ đầy đủ', done: false },
 ];
+
+const card28 = 'rounded-[28px] border border-[#E3ECF8] bg-white shadow-[0_14px_36px_rgba(42,74,122,0.08)]';
+
+const inputCls = (disabled) => [
+  'w-full rounded-2xl border px-4 py-3 text-[15px] outline-none transition',
+  disabled
+    ? 'border-[#E6EEF8] bg-[#F7FBFF] text-slate-700 cursor-not-allowed'
+    : 'border-[#D8E6F5] bg-white text-slate-800 focus:border-[#2F80ED] focus:ring-4 focus:ring-blue-100',
+].join(' ');
+
+const selectCls = inputCls(false) + ' cursor-pointer';
+
+function FieldLabel({ children, required }) {
+  return (
+    <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#8FA0B8] mb-1.5">
+      {children}{required && <span className="text-red-400 ml-0.5">*</span>}
+    </label>
+  );
+}
 
 export default function SenderProfile() {
   const fileRef = useRef();
   const [avatar, setAvatar] = useState(null);
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const [saved, setSaved] = useState(false);
+
+  const { register, handleSubmit, formState: { errors, isSubmitting, isDirty } } = useForm({
     defaultValues: MOCK_USER,
   });
 
-  const onSubmit = async (data) => {
-    await new Promise(r => setTimeout(r, 600));
-    alert('Đã lưu thông tin!');
+  const onSubmit = async () => {
+    await new Promise(r => setTimeout(r, 700));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
 
   const completedCount = COMPLETION.filter(c => c.done).length;
-  const completionPct  = Math.round((completedCount / COMPLETION.length) * 100);
+  const pct = Math.round((completedCount / COMPLETION.length) * 100);
+  const initials = MOCK_USER.fullName.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase();
 
   return (
-    <div>
-      <PageHeader
-        title="Thông tin cá nhân"
-        breadcrumbs={[
-          { label: 'Trang chủ', to: '/gui-tre/dashboard' },
-          { label: 'Hồ sơ cá nhân' },
-        ]}
-      />
+    <div className="min-h-screen bg-[#F5F9FE]">
+      <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 lg:px-8">
 
-      <div className="grid grid-cols-3 gap-5">
-        {/* Left: avatar + completion + security */}
-        <div className="space-y-4">
-          {/* Avatar card */}
-          <div className="bg-white rounded-xl shadow-md p-5 flex flex-col items-center text-center">
-            <div className="relative mb-3">
-              <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-4xl font-bold text-[#1d4ed8] overflow-hidden">
-                {avatar
-                  ? <img src={avatar} alt="" className="w-full h-full object-cover" />
-                  : MOCK_USER.fullName[0]
-                }
-              </div>
-              <button
-                type="button"
-                onClick={() => fileRef.current.click()}
-                className="absolute -bottom-1 -right-1 w-8 h-8 bg-[#1d4ed8] rounded-full flex items-center justify-center text-white shadow-lg hover:bg-[#1e40af] transition">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z" />
-                </svg>
-              </button>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden"
-                onChange={e => { const f = e.target.files[0]; if (f) setAvatar(URL.createObjectURL(f)); }} />
-            </div>
-            <p className="font-bold text-gray-800 text-base">{MOCK_USER.fullName}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{MOCK_USER.email}</p>
-            <span className="mt-2 inline-flex items-center gap-1 px-2.5 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full border border-green-200">
-              <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />Đã xác minh
-            </span>
-          </div>
+        {/* page header */}
+        <div className="mb-6">
+          <h1 className="text-[36px] font-bold text-[#0D47A1] leading-none">Hồ sơ cá nhân</h1>
+          <p className="text-sm text-[#8FA0B8] mt-2">Cập nhật thông tin để hồ sơ luôn chính xác</p>
+        </div>
 
-          {/* Profile completion */}
-          <div className="bg-white rounded-xl shadow-md p-5">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-semibold text-gray-700">Độ hoàn thiện hồ sơ</p>
-              <span className="text-sm font-bold text-[#1d4ed8]">{completionPct}%</span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-2 mb-4">
-              <div
-                className="h-2 rounded-full bg-[#1d4ed8] transition-all"
-                style={{ width: `${completionPct}%` }}
-              />
-            </div>
-            <div className="space-y-2">
-              {COMPLETION.map(item => (
-                <div key={item.label} className="flex items-center gap-2">
-                  <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] ${
-                    item.done ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
-                  }`}>
-                    {item.done ? '✓' : '○'}
-                  </div>
-                  <span className={`text-xs ${item.done ? 'text-gray-700' : 'text-gray-400'}`}>{item.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Security notice */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <div className="flex items-start gap-2">
-              <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <p className="text-xs font-semibold text-amber-700 mb-1">Bảo mật thông tin</p>
-                <p className="text-xs text-amber-600 leading-relaxed">Thông tin cá nhân của bạn được mã hóa và bảo vệ theo quy định pháp luật. Không chia sẻ tài khoản với người khác.</p>
-              </div>
-            </div>
+        {/* success toast */}
+        <div className={`fixed top-4 right-4 z-50 transition-all duration-300 ${saved ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}>
+          <div className="bg-emerald-600 text-white font-bold text-sm px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2">
+            ✓ Đã lưu thành công!
           </div>
         </div>
 
-        {/* Right: Form */}
-        <div className="col-span-2 space-y-4">
-          <form onSubmit={handleSubmit(onSubmit)}>
-            {/* Personal info section */}
-            <div className="bg-white rounded-xl shadow-md overflow-hidden mb-4">
-              <div className="bg-[#1d4ed8] px-5 py-3 flex items-center gap-2">
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.465 14.493a1.23 1.23 0 0 0 .41 1.412A9.957 9.957 0 0 0 10 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 0 0-13.074.003Z" />
-                </svg>
-                <p className="text-white font-semibold text-sm">Thông tin của bạn</p>
+        <div className="grid lg:grid-cols-3 gap-6">
+
+          {/* ── Sidebar ─────────────────────────────────── */}
+          <div className="space-y-5">
+
+            {/* avatar card */}
+            <div className={`${card28} p-6 flex flex-col items-center text-center`}>
+              <div className="relative mb-5">
+                <div className="w-24 h-24 rounded-[20px] bg-gradient-to-br from-[#EAF3FF] to-[#DCE8F7] flex items-center justify-center text-3xl font-bold text-[#0D47A1] overflow-hidden shadow-md">
+                  {avatar
+                    ? <img src={avatar} alt="" className="w-full h-full object-cover" />
+                    : initials}
+                </div>
+                <button type="button" onClick={() => fileRef.current.click()}
+                  className="absolute -bottom-1.5 -right-1.5 w-8 h-8 bg-[#0D47A1] rounded-xl flex items-center justify-center text-white shadow-lg hover:bg-[#1565C0] transition text-sm">
+                  ✏️
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                  onChange={e => { const f = e.target.files[0]; if (f) setAvatar(URL.createObjectURL(f)); }} />
               </div>
-              <div className="p-5 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField label="Họ và tên" required error={errors.fullName?.message}>
-                    <input {...register('fullName', { required: 'Bắt buộc' })} className={inputCls} />
-                  </FormField>
-                  <FormField label="Số điện thoại" required error={errors.phone?.message}>
-                    <input {...register('phone', { required: 'Bắt buộc' })} className={inputCls} placeholder="0901 234 567" />
-                  </FormField>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField label="Quốc tịch">
-                    <select {...register('nationality')} className={selectCls}>
-                      <option>Việt Nam</option>
-                      <option>Khác</option>
-                    </select>
-                  </FormField>
-                  <FormField label="Ngày sinh">
-                    <input type="date" {...register('dob')} className={inputCls} />
-                  </FormField>
-                </div>
-                <FormField label="Email" required error={errors.email?.message}>
-                  <input type="email" {...register('email', { required: 'Bắt buộc' })} className={inputCls} />
-                </FormField>
+              <p className="font-bold text-[#334155] text-[17px]">{MOCK_USER.fullName}</p>
+              <p className="text-[12px] text-[#8FA0B8] mt-0.5 mb-4">{MOCK_USER.email}</p>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-semibold uppercase tracking-wide rounded-full border border-emerald-200">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                Đã xác minh
+              </span>
+            </div>
+
+            {/* completion */}
+            <div className={`${card28} p-6`}>
+              <h2 className="text-[15px] font-bold text-[#0D47A1] mb-4">Độ hoàn thiện hồ sơ</h2>
+              <div className="flex items-end justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#8FA0B8]">{completedCount}/{COMPLETION.length} mục</span>
+                <span className="text-[28px] font-bold text-[#0D47A1]">{pct}%</span>
+              </div>
+              <div className="h-2.5 bg-[#E3ECF8] rounded-full overflow-hidden mb-5">
+                <div className="h-full rounded-full bg-gradient-to-r from-[#0D47A1] to-[#2196F3] transition-all duration-700"
+                  style={{ width: `${pct}%` }} />
+              </div>
+              <div className="space-y-2.5">
+                {COMPLETION.map(item => (
+                  <div key={item.label} className="flex items-center gap-2.5">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0
+                      ${item.done ? 'bg-emerald-100 text-emerald-600' : 'bg-[#EAF3FF] text-[#8FA0B8]'}`}>
+                      {item.done ? '✓' : '○'}
+                    </div>
+                    <span className={`text-[13px] font-semibold ${item.done ? 'text-[#334155]' : 'text-[#8FA0B8]'}`}>
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Address section */}
-            <div className="bg-white rounded-xl shadow-md overflow-hidden mb-4">
-              <div className="bg-[#1d4ed8] px-5 py-3 flex items-center gap-2">
-                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clipRule="evenodd" />
-                </svg>
-                <p className="text-white font-semibold text-sm">Địa chỉ liên hệ</p>
-              </div>
-              <div className="p-5 space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField label="Tỉnh / Thành phố">
-                    <select {...register('province')} className={selectCls}>
-                      <option>TP. Hồ Chí Minh</option>
-                      <option>Hà Nội</option>
-                      <option>Đà Nẵng</option>
-                    </select>
-                  </FormField>
-                  <FormField label="Quận / Huyện">
-                    <select {...register('district')} className={selectCls}>
-                      <option>Quận 1</option>
-                      <option>Quận 3</option>
-                      <option>Bình Thạnh</option>
-                    </select>
-                  </FormField>
-                  <FormField label="Phường / Xã">
-                    <select {...register('ward')} className={selectCls}>
-                      <option>Phường Bến Nghé</option>
-                      <option>Phường Bến Thành</option>
-                    </select>
-                  </FormField>
-                </div>
-                <FormField label="Địa chỉ cụ thể">
-                  <input {...register('address')} className={inputCls} placeholder="Số nhà, tên đường..." />
-                </FormField>
+            {/* security notice */}
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
+              <span className="text-lg flex-shrink-0">🔒</span>
+              <div>
+                <p className="text-xs font-bold text-amber-800 mb-1">Bảo mật thông tin</p>
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  Thông tin cá nhân được mã hóa và bảo vệ. Không chia sẻ tài khoản với người khác.
+                </p>
               </div>
             </div>
+          </div>
 
-            {/* Actions */}
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="secondary" size="sm">Hủy thay đổi</Button>
-              <Button type="submit" variant="primary" size="sm" loading={isSubmitting}
-                icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg>}>
-                Lưu thay đổi
-              </Button>
-            </div>
-          </form>
+          {/* ── Form ────────────────────────────────────── */}
+          <div className="lg:col-span-2">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+
+              {/* personal info */}
+              <div className={`${card28} overflow-hidden`}>
+                <div className="px-6 py-5 border-b border-[#E3ECF8]">
+                  <h2 className="text-[15px] font-bold text-[#0D47A1]">Thông tin cá nhân</h2>
+                </div>
+                <div className="p-6 space-y-5">
+                  <div className="grid sm:grid-cols-2 gap-5">
+                    <div>
+                      <FieldLabel required>Họ và tên</FieldLabel>
+                      <input {...register('fullName', { required: 'Bắt buộc' })} className={inputCls(false)} />
+                      {errors.fullName && <p className="text-xs text-red-500 mt-1">{errors.fullName.message}</p>}
+                    </div>
+                    <div>
+                      <FieldLabel required>Số điện thoại</FieldLabel>
+                      <input {...register('phone', { required: 'Bắt buộc' })} className={inputCls(false)} placeholder="0901 234 567" />
+                      {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>}
+                    </div>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-5">
+                    <div>
+                      <FieldLabel>Quốc tịch</FieldLabel>
+                      <select {...register('nationality')} className={selectCls}>
+                        <option>Việt Nam</option>
+                        <option>Khác</option>
+                      </select>
+                    </div>
+                    <div>
+                      <FieldLabel>Ngày sinh</FieldLabel>
+                      <input type="date" {...register('dob')} className={inputCls(false)} />
+                    </div>
+                  </div>
+                  <div>
+                    <FieldLabel required>Email</FieldLabel>
+                    <input type="email" {...register('email', { required: 'Bắt buộc' })} className={inputCls(false)} />
+                    {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* address */}
+              <div className={`${card28} overflow-hidden`}>
+                <div className="px-6 py-5 border-b border-[#E3ECF8]">
+                  <h2 className="text-[15px] font-bold text-[#0D47A1]">Địa chỉ liên hệ</h2>
+                </div>
+                <div className="p-6 space-y-5">
+                  <div className="grid sm:grid-cols-3 gap-5">
+                    <div>
+                      <FieldLabel>Tỉnh / Thành phố</FieldLabel>
+                      <select {...register('province')} className={selectCls}>
+                        <option>TP. Hồ Chí Minh</option>
+                        <option>Hà Nội</option>
+                        <option>Đà Nẵng</option>
+                      </select>
+                    </div>
+                    <div>
+                      <FieldLabel>Quận / Huyện</FieldLabel>
+                      <select {...register('district')} className={selectCls}>
+                        <option>Quận 1</option>
+                        <option>Quận 3</option>
+                        <option>Bình Thạnh</option>
+                      </select>
+                    </div>
+                    <div>
+                      <FieldLabel>Phường / Xã</FieldLabel>
+                      <select {...register('ward')} className={selectCls}>
+                        <option>Phường Bến Nghé</option>
+                        <option>Phường Bến Thành</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <FieldLabel>Địa chỉ cụ thể</FieldLabel>
+                    <input {...register('address')} className={inputCls(false)} placeholder="Số nhà, tên đường..." />
+                  </div>
+                </div>
+              </div>
+
+              {/* actions */}
+              <div className="flex flex-col sm:flex-row justify-end gap-3">
+                <button type="button"
+                  className="sm:order-1 py-3 px-6 rounded-2xl border-2 border-[#DCE8F7] text-[#8FA0B8] font-semibold text-sm hover:border-[#0D47A1] hover:text-[#0D47A1] transition">
+                  Hủy thay đổi
+                </button>
+                <button type="submit" disabled={isSubmitting || !isDirty}
+                  className="flex items-center justify-center gap-2 bg-[#0D47A1] hover:bg-[#1565C0] disabled:bg-[#8FA0B8] disabled:cursor-not-allowed text-white font-bold py-3 px-7 rounded-2xl transition shadow-md text-sm">
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Đang lưu...
+                    </>
+                  ) : '✓ Lưu thay đổi'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>

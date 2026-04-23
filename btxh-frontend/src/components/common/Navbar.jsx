@@ -60,13 +60,14 @@ function UserAvatar({ name }) {
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLinks = user ? (ROLE_NAV[user.role] ?? []) : GUEST_NAV;
 
   return (
     <header className="bg-[#1e3a5f] text-white shadow-lg sticky top-0 z-40">
       {/* Top bar */}
-      <div className="px-6 py-3 flex items-center justify-between gap-4">
+      <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
         {/* Logo + Title */}
         <Link to="/" className="flex items-center gap-3 flex-shrink-0">
           <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center">
@@ -81,7 +82,7 @@ export default function Navbar() {
         </Link>
 
         {/* Right actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {user ? (
             <>
               {/* Notification bell */}
@@ -130,18 +131,30 @@ export default function Navbar() {
               </div>
             </>
           ) : (
-            <Link
-              to="/dang-nhap"
-              className="px-4 py-1.5 bg-[#f97316] hover:bg-[#ea580c] text-white text-sm font-medium rounded-lg transition"
-            >
-              Đăng nhập
-            </Link>
+            <>
+              <Link
+                to="/dang-nhap"
+                className="px-4 py-1.5 bg-[#f97316] hover:bg-[#ea580c] text-white text-sm font-semibold rounded-lg transition"
+              >
+                Đăng nhập
+              </Link>
+              {/* Hamburger — mobile only */}
+              <button
+                onClick={() => setMobileOpen((v) => !v)}
+                className={`sm:hidden flex flex-col gap-1.5 p-2 rounded-lg hover:bg-white/10 transition ${mobileOpen ? 'hamburger-open' : ''}`}
+                aria-label="Menu"
+              >
+                <span className="hamburger-line" />
+                <span className="hamburger-line" />
+                <span className="hamburger-line" />
+              </button>
+            </>
           )}
         </div>
       </div>
 
-      {/* Navigation bar */}
-      <nav className="border-t border-white/10 px-6">
+      {/* Desktop nav bar */}
+      <nav className="hidden sm:block border-t border-white/10 px-6">
         <div className="flex items-center gap-1 -mb-px overflow-x-auto">
           {navLinks.map((link) => (
             <NavLink
@@ -149,7 +162,7 @@ export default function Navbar() {
               to={link.to}
               end={link.to === '/'}
               className={({ isActive }) =>
-                `px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                `px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${
                   isActive
                     ? 'border-[#f97316] text-white'
                     : 'border-transparent text-blue-200 hover:text-white hover:border-white/40'
@@ -161,6 +174,36 @@ export default function Navbar() {
           ))}
         </div>
       </nav>
+
+      {/* Mobile nav drawer */}
+      {mobileOpen && !user && (
+        <nav className="sm:hidden border-t border-white/10 px-4 py-3 flex flex-col gap-1 bg-[#162d4a]">
+          {navLinks.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.to === '/'}
+              onClick={() => setMobileOpen(false)}
+              className={({ isActive }) =>
+                `px-4 py-3 text-sm font-semibold rounded-lg transition-colors ${
+                  isActive
+                    ? 'bg-white/15 text-white'
+                    : 'text-blue-200 hover:text-white hover:bg-white/10'
+                }`
+              }
+            >
+              {link.label}
+            </NavLink>
+          ))}
+          <Link
+            to="/dang-ky"
+            onClick={() => setMobileOpen(false)}
+            className="px-4 py-3 text-sm font-semibold text-blue-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          >
+            Đăng ký
+          </Link>
+        </nav>
+      )}
     </header>
   );
 }

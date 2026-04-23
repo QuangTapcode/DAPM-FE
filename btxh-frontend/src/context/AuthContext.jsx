@@ -4,12 +4,12 @@ export const AuthContext = createContext(null);
 
 // ─── Mock accounts (dev only) ────────────────────────────
 const MOCK_ACCOUNTS = [
-  { email: 'sender@test.com',       password: '123456', role: 'sender',           fullName: 'Nguyễn Thị Lan' },
-  { email: 'adopter@test.com',      password: '123456', role: 'adopter',          fullName: 'Trần Văn Hùng' },
-  { email: 'reception@test.com',    password: '123456', role: 'staff_reception',  fullName: 'Lê Thị Hoa' },
-  { email: 'adoption@test.com',     password: '123456', role: 'staff_adoption',   fullName: 'Phạm Văn Dũng' },
-  { email: 'manager@test.com',      password: '123456', role: 'manager',          fullName: 'Hoàng Minh Tuấn' },
-  { email: 'admin@test.com',        password: '123456', role: 'admin',            fullName: 'Admin Hệ Thống' },
+  { email: 'sender@test.com', password: '123456', role: 'sender', fullName: 'Nguyễn Thị Lan' },
+  { email: 'adopter@test.com', password: '123456', role: 'adopter', fullName: 'Trần Văn Hùng' },
+  { email: 'reception@test.com', password: '123456', role: 'staff_reception', fullName: 'Lê Thị Hoa' },
+  { email: 'adoption@test.com', password: '123456', role: 'staff_adoption', fullName: 'Phạm Văn Dũng' },
+  { email: 'manager@test.com', password: '123456', role: 'manager', fullName: 'Hoàng Minh Tuấn' },
+  { email: 'admin@test.com', password: '123456', role: 'admin', fullName: 'Admin Hệ Thống' },
 ];
 
 export function AuthProvider({ children }) {

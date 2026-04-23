@@ -8,29 +8,34 @@ import { NavLink } from 'react-router-dom';
  */
 export default function Sidebar({ menuItems, title }) {
   return (
-    <aside className="w-56 flex-shrink-0 bg-[#1e3a5f] text-blue-100 flex flex-col min-h-full">
-      {title && (
-        <div className="px-5 py-4 border-b border-white/10">
-          <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">{title}</p>
-        </div>
-      )}
+    <aside className="h-full w-60 flex-shrink-0 border-r border-[#E5E7EB] bg-[#F8FAFC] text-[#475569] shadow-[4px_0_18px_rgba(15,23,42,0.04)]">      {title && (
+      <div className="border-b border-[#E5E7EB] px-5 py-5">
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#94A3B8]">
+          {title}
+        </p>
+      </div>
+    )}
 
-      <nav className="flex-1 px-3 py-3 space-y-0.5">
+      <nav className="flex-1 space-y-2 px-3 py-4">
         {menuItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             end={item.exact}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                isActive
-                  ? 'bg-[#f97316] text-white font-semibold shadow-sm'
-                  : 'text-blue-200 hover:bg-white/10 hover:text-white'
+              `group flex items-center gap-3 rounded-xl px-4 py-3 text-sm transition-all duration-200 ${isActive
+                ? 'bg-[#2F80ED] text-white font-semibold shadow-[0_8px_18px_rgba(47,128,237,0.22)]'
+                : 'text-[#64748B] hover:bg-white hover:text-[#334155] hover:shadow-sm'
               }`
             }
           >
             {item.icon && (
-              <span className="flex-shrink-0 w-4 h-4 opacity-80">{item.icon}</span>
+              <span
+                className={`flex h-5 w-5 flex-shrink-0 items-center justify-center ${'group-hover:text-[#334155]'
+                  }`}
+              >
+                {item.icon}
+              </span>
             )}
             <span className="truncate">{item.label}</span>
           </NavLink>

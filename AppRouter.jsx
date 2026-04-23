@@ -116,6 +116,7 @@ export default function AppRouter() {
         }>
           <Route path="/truong-phong" element={<ManagerDashboard />} />
           <Route path="/truong-phong/ho-so-cho-duyet" element={<PendingProfileList />} />
+          <Route path="/truong-phong/lichsu-hoso" element={<ProfileHistory />} />
           <Route path="/truong-phong/thong-ke" element={<Statistics />} />
         </Route>
 
