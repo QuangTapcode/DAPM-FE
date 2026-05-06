@@ -1,408 +1,756 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
-import { inputCls, selectCls, textareaCls, FormField } from '../../components/common/FormField';
+import family from '../../assets/sender.jpg';
 
-/* ─── Constants ───────────────────────────────────────── */
-const STEPS = [
-  { id: 1, label: 'Người giao', icon: '👤' },
-  { id: 2, label: 'Trẻ em', icon: '👶' },
-  { id: 3, label: 'Lý do', icon: '📝' },
-  { id: 4, label: 'Tài liệu', icon: '📎' },
+const SENDER_TYPES = [
+  { code: 'CME', label: 'Cha hoặc mẹ ruột', requireDocs: true },
+  { code: 'NTH', label: 'Người thân', requireDocs: true },
+  { code: 'CQDP', label: 'Cơ quan địa phương', requireDocs: false },
 ];
 
-const REQUIRED_DOCS = [
-  { key: 'birthCert', label: 'Giấy khai sinh của trẻ', required: true, hint: 'PDF, JPG — tối đa 5MB' },
-  { key: 'senderID', label: 'CCCD/CMND người giao', required: true, hint: 'PDF, JPG — tối đa 5MB' },
-  { key: 'healthCert', label: 'Giấy xác nhận tình trạng sức khỏe', required: false, hint: 'PDF, JPG — tối đa 5MB' },
-  { key: 'otherDocs', label: 'Giấy tờ khác (nếu có)', required: false, hint: 'PDF, JPG — tối đa 5MB' },
+const BASE_DOCS = [
+  {
+    key: 'birthCert',
+    label: 'Giấy khai sinh của trẻ',
+    baseRequired: true,
+    hint: 'PDF, JPG, PNG — tối đa 5MB',
+  },
+  {
+    key: 'senderID',
+    label: 'CCCD/CMND người gửi',
+    baseRequired: true,
+    hint: 'PDF, JPG, PNG — tối đa 5MB',
+  },
+  {
+    key: 'healthCert',
+    label: 'Giấy xác nhận tình trạng sức khỏe',
+    baseRequired: false,
+    hint: 'PDF, JPG, PNG — tối đa 5MB',
+  },
+  {
+    key: 'otherDocs',
+    label: 'Giấy tờ khác (nếu có)',
+    baseRequired: false,
+    hint: 'PDF, JPG, PNG — tối đa 5MB',
+  },
 ];
 
-const card28 = 'rounded-[28px] border border-[#E3ECF8] bg-white shadow-[0_14px_36px_rgba(42,74,122,0.08)]';
+/**
+ * Dữ liệu mẫu để lọc xã/phường theo tỉnh.
+ * Khi nối dữ liệu thật, thay phần này bằng API hoặc danh mục địa giới hành chính.
+ */
+const LOCATION_DATA = [
+  {
+    provinceCode: '48',
+    provinceName: 'Thành phố Đà Nẵng',
+    wards: [
+      { wardCode: '20194', wardName: 'Phường Hòa Khánh Bắc' },
+      { wardCode: '20197', wardName: 'Phường Hòa Khánh Nam' },
+      { wardCode: '20200', wardName: 'Phường Hòa Minh' },
+      { wardCode: '20203', wardName: 'Phường Hòa Hiệp Nam' },
+    ],
+  },
+  {
+    provinceCode: '01',
+    provinceName: 'Thành phố Hà Nội',
+    wards: [
+      { wardCode: '00001', wardName: 'Phường Phúc Xá' },
+      { wardCode: '00004', wardName: 'Phường Trúc Bạch' },
+      { wardCode: '00006', wardName: 'Phường Vĩnh Phúc' },
+      { wardCode: '00007', wardName: 'Phường Cống Vị' },
+    ],
+  },
+  {
+    provinceCode: '79',
+    provinceName: 'Thành phố Hồ Chí Minh',
+    wards: [
+      { wardCode: '26734', wardName: 'Phường Bến Nghé' },
+      { wardCode: '26737', wardName: 'Phường Bến Thành' },
+      { wardCode: '26740', wardName: 'Phường Cầu Kho' },
+      { wardCode: '26743', wardName: 'Phường Cầu Ông Lãnh' },
+    ],
+  },
+];
 
-const adoptInputCls = [
-  'w-full rounded-2xl border border-[#D8E6F5] bg-white px-4 py-3 text-[15px] text-slate-800',
-  'outline-none transition focus:border-[#2F80ED] focus:ring-4 focus:ring-blue-100',
-].join(' ');
+const labelClass =
+  'block text-[13px] font-semibold uppercase tracking-wide text-[#44474E] mb-2';
 
-const adoptSelectCls = adoptInputCls + ' cursor-pointer';
-const adoptTextareaCls = adoptInputCls;
+const inputClass =
+  'w-full rounded-xl border border-[#e6edf7] bg-[#f7fbff] px-4 py-3 text-sm text-[#334155] outline-none transition focus:border-[#93c5fd] focus:ring-2 focus:ring-[#bfdbfe]';
 
-/* ─── Shared UI ───────────────────────────────────────── */
-function SectionTitle({ icon, children }) {
+const textareaClass =
+  'w-full rounded-xl border border-[#e6edf7] bg-[#f7fbff] px-4 py-3 text-sm text-[#334155] outline-none transition resize-none focus:border-[#93c5fd] focus:ring-2 focus:ring-[#bfdbfe]';
+
+const errorClass = 'mt-1 text-xs text-red-500';
+
+function FieldError({ message }) {
+  if (!message) return null;
+  return <p className={errorClass}>{message}</p>;
+}
+
+function PageHeader() {
   return (
-    <div className="flex items-center gap-3 mb-6">
-      <span className="text-2xl">{icon}</span>
-      <h2 className="text-[18px] font-bold text-[#0D47A1]">{children}</h2>
+    <div className="flex flex-col items-center text-center">
+      <h1 className="!text-[36px] font-bold !text-[#0D47A1]">
+        Đăng ký gửi trẻ
+      </h1>
+
+      <p className="mt-2 w-full max-w-[720px] text-[16px] leading-7 !text-[#44474E] text-center">
+        Mỗi đứa trẻ đều xứng đáng có một điểm tựa vững chắc để trưởng thành. Cảm ơn bạn đã kết nối để chúng tôi được trở thành mái nhà của các em.
+      </p>
     </div>
   );
 }
 
-function FieldLabel({ label, required }) {
-  return (
-    <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#8FA0B8] mb-1.5">
-      {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-    </label>
+function ApplicantSection({
+  register,
+  errors,
+  senderProvinceOptions,
+  senderWardOptions,
+  senderTypeCode,
+}) {
+  const selectedSenderType = SENDER_TYPES.find(
+    (item) => item.code === senderTypeCode
   );
-}
 
-function DocRow({ doc, file, onChange }) {
-  const ref = useRef();
   return (
-    <div className={`flex items-start gap-4 p-4 rounded-2xl border-2 transition-all duration-200
-      ${file ? 'border-emerald-200 bg-emerald-50' : doc.required ? 'border-[#DCE8F7] bg-[#F7FBFF] hover:border-[#2F80ED]' : 'border-dashed border-[#DCE8F7] bg-[#F7FBFF] hover:border-[#2F80ED]'}`}>
-      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg flex-shrink-0
-        ${file ? 'bg-emerald-100' : 'bg-[#EAF3FF]'}`}>
-        {file ? '✅' : '📄'}
+    <section className="rounded-2xl bg-white border border-[#edf2f7] shadow-sm p-5 lg:p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <h2 className="text-[15px] font-bold !text-[#0D47A1]">
+          Thông tin người gửi trẻ
+        </h2>
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-semibold text-[#334155]">{doc.label}</p>
-          {doc.required && <span className="text-[10px] bg-red-50 text-red-500 font-bold px-1.5 py-0.5 rounded border border-red-200">Bắt buộc</span>}
-        </div>
-        {file
-          ? <p className="text-xs text-emerald-600 font-semibold mt-0.5 truncate">{file.name}</p>
-          : <p className="text-xs text-[#8FA0B8] mt-0.5">{doc.hint}</p>
-        }
-      </div>
-      <button type="button" onClick={() => ref.current.click()}
-        className={`flex-shrink-0 text-xs font-bold px-4 py-1.5 rounded-2xl transition
-          ${file ? 'text-emerald-700 bg-emerald-100 hover:bg-emerald-200' : 'text-[#0D47A1] bg-[#EAF3FF] hover:bg-[#D8EAF9]'}`}>
-        {file ? 'Đổi file' : 'Tải lên'}
-      </button>
-      <input ref={ref} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
-        onChange={e => onChange(e.target.files[0] || null)} />
-    </div>
-  );
-}
 
-/* ─── Step Indicator ──────────────────────────────────── */
-function StepIndicator({ current }) {
-  return (
-    <div className="flex items-center justify-between mb-8">
-      {STEPS.map((step, i) => {
-        const done = step.id < current;
-        const active = step.id === current;
-        return (
-          <div key={step.id} className="flex items-center flex-1">
-            <div className="flex flex-col items-center">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300
-                ${done ? 'bg-emerald-500 text-white ring-4 ring-emerald-100' :
-                  active ? 'bg-[#0D47A1] text-white ring-4 ring-[#DCE8F9]' :
-                    'bg-[#EAF3FF] text-[#8FA0B8]'}`}>
-                {done ? '✓' : step.icon}
-              </div>
-              <p className={`text-[11px] font-bold mt-1.5 hidden sm:block tracking-wide transition-colors
-                ${active ? 'text-[#0D47A1]' : done ? 'text-emerald-500' : 'text-[#8FA0B8]'}`}>
-                {step.label}
-              </p>
-            </div>
-            {i < STEPS.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-2 transition-all duration-500 ${step.id < current ? 'bg-emerald-300' : 'bg-[#E3ECF8]'}`} />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ─── Step panels ─────────────────────────────────────── */
-function Step1({ register, errors }) {
-  return (
-    <div className="space-y-5">
-      <SectionTitle icon="👤">Thông tin người giao trẻ</SectionTitle>
-      <div className="grid sm:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <FieldLabel label="Họ và tên người giao" required />
-          <input {...register('senderName', { required: 'Vui lòng nhập họ tên' })} className={adoptInputCls} placeholder="Nguyễn Văn A" />
-          {errors.senderName && <p className="text-xs text-red-500 mt-1">{errors.senderName.message}</p>}
+          <label className={labelClass}>Họ và tên người gửi</label>
+          <input
+            {...register('senderName', {
+              required: 'Vui lòng nhập họ tên.',
+            })}
+            className={inputClass}
+            placeholder="Nguyễn Văn A"
+          />
+          <FieldError message={errors.senderName?.message} />
         </div>
+
         <div>
-          <FieldLabel label="Quan hệ với trẻ" required />
-          <select {...register('relationship', { required: 'Vui lòng chọn' })} className={adoptSelectCls}>
-            <option value="">-- Chọn quan hệ --</option>
-            <option value="cha_me">Cha / Mẹ</option>
-            <option value="ong_ba">Ông / Bà</option>
-            <option value="anh_chi">Anh / Chị</option>
-            <option value="nguoi_than">Người thân khác</option>
-            <option value="khac">Khác</option>
+          <label className={labelClass}>Loại người gửi trẻ</label>
+          <select
+            {...register('senderTypeCode', {
+              required: 'Vui lòng chọn loại người gửi.',
+            })}
+            className={inputClass}
+          >
+            <option value="">Chọn loại người gửi</option>
+            {SENDER_TYPES.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.label}
+              </option>
+            ))}
           </select>
-          {errors.relationship && <p className="text-xs text-red-500 mt-1">{errors.relationship.message}</p>}
+          <FieldError message={errors.senderTypeCode?.message} />
         </div>
-      </div>
-      <div className="grid sm:grid-cols-2 gap-5">
+
         <div>
-          <FieldLabel label="CCCD / CMND" required />
-          <input {...register('senderNationalId', {
-            required: 'Vui lòng nhập số CCCD',
-            pattern: { value: /^\d{9,12}$/, message: 'Số CCCD không hợp lệ' }
-          })} className={adoptInputCls} placeholder="012345678901" maxLength={12} />
-          {errors.senderNationalId && <p className="text-xs text-red-500 mt-1">{errors.senderNationalId.message}</p>}
+          <label className={labelClass}>Số CCCD</label>
+          <input
+            {...register('senderNationalId', {
+              required: 'Vui lòng nhập số CCCD.',
+              pattern: {
+                value: /^\d{9,12}$/,
+                message: 'Số CCCD không hợp lệ.',
+              },
+            })}
+            className={inputClass}
+            placeholder="012345678901"
+            maxLength={12}
+          />
+          <FieldError message={errors.senderNationalId?.message} />
         </div>
+
         <div>
-          <FieldLabel label="Số điện thoại" required />
-          <input {...register('senderPhone', {
-            required: 'Vui lòng nhập số điện thoại',
-            pattern: { value: /^0\d{9}$/, message: 'Số điện thoại không hợp lệ' }
-          })} className={adoptInputCls} placeholder="0901 234 567" maxLength={10} />
-          {errors.senderPhone && <p className="text-xs text-red-500 mt-1">{errors.senderPhone.message}</p>}
+          <label className={labelClass}>Số điện thoại</label>
+          <input
+            {...register('senderPhone', {
+              required: 'Vui lòng nhập số điện thoại.',
+              pattern: {
+                value: /^0\d{9}$/,
+                message: 'Số điện thoại không hợp lệ.',
+              },
+            })}
+            className={inputClass}
+            placeholder="0901234567"
+            maxLength={10}
+          />
+          <FieldError message={errors.senderPhone?.message} />
+        </div>
+
+        <div>
+          <label className={labelClass}>Tỉnh / Thành phố</label>
+          <select
+            {...register('senderProvinceCode', {
+              required: 'Vui lòng chọn tỉnh/thành.',
+            })}
+            className={inputClass}
+          >
+            <option value="">Chọn tỉnh/thành</option>
+            {senderProvinceOptions.map((item) => (
+              <option key={item.provinceCode} value={item.provinceCode}>
+                {item.provinceName}
+              </option>
+            ))}
+          </select>
+          <FieldError message={errors.senderProvinceCode?.message} />
+        </div>
+
+        <div>
+          <label className={labelClass}>Xã / Phường</label>
+          <select
+            {...register('senderWardCode', {
+              required: 'Vui lòng chọn xã/phường.',
+            })}
+            className={inputClass}
+          >
+            <option value="">Chọn xã/phường</option>
+            {senderWardOptions.map((item) => (
+              <option key={item.wardCode} value={item.wardCode}>
+                {item.wardName}
+              </option>
+            ))}
+          </select>
+          <FieldError message={errors.senderWardCode?.message} />
         </div>
       </div>
-      <div>
-        <FieldLabel label="Địa chỉ thường trú" required />
-        <input {...register('senderAddress', { required: 'Vui lòng nhập địa chỉ' })}
-          className={adoptInputCls} placeholder="Số nhà, Tên đường, Phường/Xã, Quận/Huyện, Tỉnh/Thành" />
-        {errors.senderAddress && <p className="text-xs text-red-500 mt-1">{errors.senderAddress.message}</p>}
+
+      <div className="mt-4">
+        <label className={labelClass}>Địa chỉ cụ thể</label>
+        <input
+          {...register('senderAddressDetail', {
+            required: 'Vui lòng nhập địa chỉ cụ thể.',
+          })}
+          className={inputClass}
+          placeholder="Số nhà, đường/thôn/xóm, tổ dân phố..."
+        />
+        <FieldError message={errors.senderAddressDetail?.message} />
       </div>
-    </div>
+
+      {selectedSenderType?.code === 'CQDP' && (
+        <div className="mt-4 rounded-xl border border-[#dbeafe] bg-[#eff6ff] px-4 py-3">
+          <p className="text-sm font-medium text-[#1d4ed8]">
+            Bạn đang chọn loại người gửi là <b>Cơ quan địa phương</b>. Hệ thống sẽ
+            không bắt buộc tải lên giấy tờ khi nộp hồ sơ.
+          </p>
+        </div>
+      )}
+    </section>
   );
 }
 
-function Step2({ register, errors }) {
+function ChildSection({
+  register,
+  errors,
+  childProvinceOptions,
+  childWardOptions,
+}) {
   return (
-    <div className="space-y-5">
-      <SectionTitle icon="👶">Thông tin trẻ em</SectionTitle>
-      <div className="grid sm:grid-cols-2 gap-5">
-        <div>
-          <FieldLabel label="Họ và tên trẻ" required />
-          <input {...register('childName', { required: 'Vui lòng nhập tên trẻ' })} className={adoptInputCls} placeholder="Nguyễn Thị B" />
-          {errors.childName && <p className="text-xs text-red-500 mt-1">{errors.childName.message}</p>}
-        </div>
-        <div>
-          <FieldLabel label="Ngày sinh" required />
-          <input type="date" {...register('childDob', { required: 'Vui lòng chọn ngày sinh' })} className={adoptInputCls} />
-          {errors.childDob && <p className="text-xs text-red-500 mt-1">{errors.childDob.message}</p>}
-        </div>
+    <section className="rounded-2xl bg-white border border-[#edf2f7] shadow-sm p-5 lg:p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <h2 className="text-[15px] font-bold !text-[#0D47A1]">
+          Thông tin trẻ em
+        </h2>
       </div>
-      <div className="grid sm:grid-cols-2 gap-5">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <FieldLabel label="Giới tính" />
-          <select {...register('childGender')} className={adoptSelectCls}>
+          <label className={labelClass}>Họ và tên trẻ</label>
+          <input
+            {...register('childName', {
+              required: 'Vui lòng nhập tên trẻ.',
+            })}
+            className={inputClass}
+            placeholder="Nguyễn Thị B"
+          />
+          <FieldError message={errors.childName?.message} />
+        </div>
+
+        <div>
+          <label className={labelClass}>Ngày sinh</label>
+          <input
+            type="date"
+            {...register('childDob', {
+              required: 'Vui lòng chọn ngày sinh.',
+            })}
+            className={inputClass}
+          />
+          <FieldError message={errors.childDob?.message} />
+        </div>
+
+        <div>
+          <label className={labelClass}>Giới tính</label>
+          <select {...register('childGender')} className={inputClass}>
             <option value="male">Nam</option>
             <option value="female">Nữ</option>
           </select>
         </div>
+
         <div>
-          <FieldLabel label="Dân tộc" />
-          <input {...register('ethnicity')} className={adoptInputCls} placeholder="Kinh, Tày, Nùng..." />
+          <label className={labelClass}>Dân tộc</label>
+          <input
+            {...register('ethnicity')}
+            className={inputClass}
+            placeholder="Kinh, Tày, Nùng..."
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Tỉnh / Thành phố</label>
+          <select
+            {...register('childProvinceCode', {
+              required: 'Vui lòng chọn tỉnh/thành.',
+            })}
+            className={inputClass}
+          >
+            <option value="">Chọn tỉnh/thành</option>
+            {childProvinceOptions.map((item) => (
+              <option key={item.provinceCode} value={item.provinceCode}>
+                {item.provinceName}
+              </option>
+            ))}
+          </select>
+          <FieldError message={errors.childProvinceCode?.message} />
+        </div>
+
+        <div>
+          <label className={labelClass}>Xã / Phường</label>
+          <select
+            {...register('childWardCode', {
+              required: 'Vui lòng chọn xã/phường.',
+            })}
+            className={inputClass}
+          >
+            <option value="">Chọn xã/phường</option>
+            {childWardOptions.map((item) => (
+              <option key={item.wardCode} value={item.wardCode}>
+                {item.wardName}
+              </option>
+            ))}
+          </select>
+          <FieldError message={errors.childWardCode?.message} />
         </div>
       </div>
-      <div>
-        <FieldLabel label="Địa chỉ thường trú của trẻ" />
-        <input {...register('childAddress')} className={adoptInputCls} placeholder="Nếu khác với người giao" />
+
+      <div className="mt-4">
+        <label className={labelClass}>Địa chỉ cụ thể của trẻ</label>
+        <input
+          {...register('childAddressDetail', {
+            required: 'Vui lòng nhập địa chỉ cụ thể của trẻ.',
+          })}
+          className={inputClass}
+          placeholder="Số nhà, đường/thôn/xóm, tổ dân phố..."
+        />
+        <FieldError message={errors.childAddressDetail?.message} />
       </div>
-      <div>
-        <FieldLabel label="Tình trạng sức khoẻ hiện tại" />
-        <textarea {...register('healthStatus')} rows={3} className={adoptTextareaCls}
-          placeholder="Mô tả tình trạng sức khoẻ, bệnh lý nếu có..." />
+
+      <div className="mt-4">
+        <label className={labelClass}>Tình trạng sức khỏe hiện tại</label>
+        <textarea
+          {...register('healthStatus')}
+          rows={4}
+          className={textareaClass}
+          placeholder="Mô tả tình trạng sức khỏe, bệnh lý hoặc lưu ý đặc biệt nếu có..."
+        />
       </div>
-    </div>
+    </section>
   );
 }
 
-function Step3({ register, errors }) {
+function ReasonSection({ register, errors }) {
   return (
-    <div className="space-y-5">
-      <SectionTitle icon="📝">Lý do giao trẻ</SectionTitle>
+    <section className="rounded-2xl bg-white border border-[#edf2f7] shadow-sm p-5 lg:p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <h2 className="text-[15px] font-bold !text-[#0D47A1]">
+          Lý do gửi trẻ
+        </h2>
+      </div>
+
       <div>
-        <FieldLabel label="Lý do chính" required />
-        <select {...register('reason', { required: 'Vui lòng chọn lý do' })} className={adoptSelectCls}>
-          <option value="">-- Chọn lý do chính --</option>
+        <label className={labelClass}>Lý do chính</label>
+        <select
+          {...register('reason', {
+            required: 'Vui lòng chọn lý do.',
+          })}
+          className={inputClass}
+        >
+          <option value="">Chọn lý do chính</option>
           <option value="mo_coi">Trẻ mồ côi (cha mẹ qua đời)</option>
           <option value="kinh_te">Hoàn cảnh kinh tế khó khăn</option>
           <option value="suc_khoe">Cha / Mẹ bệnh nặng, không thể chăm sóc</option>
           <option value="xa_hoi">Hoàn cảnh xã hội đặc biệt</option>
           <option value="khac">Lý do khác</option>
         </select>
-        {errors.reason && <p className="text-xs text-red-500 mt-1">{errors.reason.message}</p>}
+        <FieldError message={errors.reason?.message} />
       </div>
-      <div>
-        <FieldLabel label="Mô tả chi tiết hoàn cảnh" required />
-        <textarea {...register('reasonDetail', { required: 'Vui lòng mô tả chi tiết', minLength: { value: 30, message: 'Tối thiểu 30 ký tự' } })}
-          rows={6} className={adoptTextareaCls}
-          placeholder="Mô tả chi tiết hoàn cảnh gia đình và lý do cần gửi trẻ vào trung tâm bảo trợ..." />
-        {errors.reasonDetail && <p className="text-xs text-red-500 mt-1">{errors.reasonDetail.message}</p>}
+
+      <div className="mt-4">
+        <label className={labelClass}>Mô tả chi tiết hoàn cảnh</label>
+        <textarea
+          {...register('reasonDetail', {
+            required: 'Vui lòng mô tả chi tiết.',
+            minLength: {
+              value: 30,
+              message: 'Tối thiểu 30 ký tự.',
+            },
+          })}
+          rows={6}
+          className={textareaClass}
+          placeholder="Mô tả chi tiết hoàn cảnh gia đình và lý do cần gửi trẻ vào trung tâm bảo trợ..."
+        />
+        <FieldError message={errors.reasonDetail?.message} />
       </div>
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
-        <span className="text-lg flex-shrink-0">💡</span>
-        <div>
-          <p className="text-sm font-bold text-amber-800 mb-1">Lưu ý</p>
-          <p className="text-xs text-amber-700 leading-relaxed">
-            Thông tin bạn cung cấp sẽ được cán bộ tiếp nhận xem xét. Hãy mô tả trung thực và đầy đủ để hồ sơ được xử lý nhanh nhất.
+    </section>
+  );
+}
+
+function DocumentItem({ doc, file, onChange }) {
+  const inputRef = useRef();
+
+  return (
+    <div className="rounded-xl border border-[#e6edf7] bg-[#f7fbff] p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold text-[#334155]">{doc.label}</p>
+            {doc.required && (
+              <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-500">
+                Bắt buộc
+              </span>
+            )}
+          </div>
+
+          <p
+            className={`mt-1 text-xs ${file ? 'text-emerald-600' : 'text-[#7f8c9b]'
+              }`}
+          >
+            {file ? file.name : doc.hint}
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="shrink-0 rounded-xl bg-[#eaf4ff] px-4 py-2 text-sm font-semibold text-[#1f5fbf] transition hover:bg-[#dbeafe]"
+        >
+          {file ? 'Đổi file' : 'Tải lên'}
+        </button>
       </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png"
+        className="hidden"
+        onChange={(e) => onChange(e.target.files?.[0] || null)}
+      />
     </div>
   );
 }
 
-function Step4({ docs, setDocs }) {
-  const uploaded = Object.values(docs).filter(Boolean).length;
-  const pct = Math.round((uploaded / REQUIRED_DOCS.length) * 100);
+function DocumentsSection({ docs, setDocs, docsConfig }) {
   return (
-    <div className="space-y-5">
-      <SectionTitle icon="📎">Tài liệu đính kèm</SectionTitle>
-
-      <div className="bg-[#F7FBFF] rounded-2xl p-4 border border-[#DCE8F7]">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#8FA0B8]">Tiến độ tải lên</p>
-          <p className="text-sm font-bold text-[#0D47A1]">{uploaded}/{REQUIRED_DOCS.length} tài liệu</p>
-        </div>
-        <div className="h-2.5 bg-[#E3ECF8] rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-[#0D47A1] to-[#2196F3] rounded-full transition-all duration-500"
-            style={{ width: `${pct}%` }} />
-        </div>
-        <p className="text-xs text-[#8FA0B8] mt-1.5">PDF, JPG, PNG — Tối đa 5MB mỗi file</p>
+    <section className="rounded-2xl bg-white border border-[#edf2f7] shadow-sm p-5 lg:p-6">
+      <div className="flex items-center gap-2 mb-5">
+        <h2 className="text-[15px] font-bold !text-[#0D47A1]">
+          Tài liệu giấy tờ cần thiết
+        </h2>
       </div>
 
-      <div className="space-y-3">
-        {REQUIRED_DOCS.map(doc => (
-          <DocRow key={doc.key} doc={doc} file={docs[doc.key]}
-            onChange={f => setDocs(prev => ({ ...prev, [doc.key]: f }))} />
+      <div className="space-y-4">
+        {docsConfig.map((doc) => (
+          <DocumentItem
+            key={doc.key}
+            doc={doc}
+            file={docs[doc.key]}
+            onChange={(newFile) =>
+              setDocs((prev) => ({
+                ...prev,
+                [doc.key]: newFile,
+              }))
+            }
+          />
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
-/* ─── Main ────────────────────────────────────────────── */
+function NotesCard() {
+  const notes = [
+    'Mọi thông tin cung cấp phải chính xác và có thể đối chiếu khi cần.',
+    'Địa chỉ được nhập theo tỉnh/thành, sau đó chọn xã/phường tương ứng để đảm bảo đúng mã địa giới.',
+    'Thời gian xem xét dự kiến từ 7–14 ngày làm việc.',
+  ];
+
+  return (
+    <section className="h-full rounded-2xl bg-[#eaf4ff] border border-[#dbeafe] p-5">
+      <h3 className="text-[15px] font-bold text-[#1f5fbf] mb-4">
+        Lưu ý quan trọng
+      </h3>
+
+      <ul className="space-y-3">
+        {notes.map((note) => (
+          <li
+            key={note}
+            className="flex items-start gap-3 text-sm text-[#5b6b7c] leading-6"
+          >
+            <span className="mt-1 text-[#3b82f6]">ⓘ</span>
+            <span>{note}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+function SubmitCard({ isSubmitting, requiredMissing, onCancel }) {
+  return (
+    <section className="rounded-2xl bg-white border border-[#edf2f7] shadow-sm p-5 min-h-[110px] flex flex-col justify-center">
+      <button
+        type="submit"
+        disabled={isSubmitting || requiredMissing > 0}
+        className="w-full rounded-xl bg-[#1976D2] hover:bg-[#1f5fbf] text-white text-sm font-semibold py-3 px-4 transition disabled:opacity-70 disabled:cursor-not-allowed"
+      >
+        {isSubmitting ? 'Đang xử lý...' : 'Gửi yêu cầu'}
+      </button>
+
+      <button
+        type="button"
+        onClick={onCancel}
+        className="mt-4 w-full text-sm font-medium text-[#94a3b8] hover:text-[#64748b] transition"
+      >
+        Hủy đơn đăng ký
+      </button>
+    </section>
+  );
+}
+function RightTopPanel({ isSubmitting, requiredMissing, onCancel }) {
+  return (
+    <div className="grid h-full grid-rows-[1fr_auto] gap-5">
+      <NotesCard />
+
+      <SubmitCard
+        isSubmitting={isSubmitting}
+        requiredMissing={requiredMissing}
+        onCancel={onCancel}
+      />
+    </div>
+  );
+}
+function ImageCard() {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#edf2f7] shadow-sm bg-white">
+      <div className="relative h-[360px] w-full">
+        <img
+          src={family}
+          alt="Hỗ trợ trẻ em"
+          className="h-full w-full object-cover"
+        />
+
+        <p className="absolute bottom-4 left-4 right-4 text-sm italic leading-6 text-white">
+          “Mỗi hồ sơ được tiếp nhận đầy đủ là một cơ hội để trẻ được chăm sóc tốt
+          hơn và an toàn hơn.”
+        </p>
+      </div>
+    </section>
+  );
+}
 export default function CreateChildRequest() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
   const [docs, setDocs] = useState({});
-  const [dir, setDir] = useState('forward');
-  const [visible, setVisible] = useState(true);
 
-  const { register, handleSubmit, trigger, formState: { errors, isSubmitting } } = useForm({ mode: 'onChange' });
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    mode: 'onChange',
+    defaultValues: {
+      senderName: '',
+      senderTypeCode: '',
+      senderNationalId: '',
+      senderPhone: '',
+      senderProvinceCode: '',
+      senderWardCode: '',
+      senderAddressDetail: '',
+      childName: '',
+      childDob: '',
+      childGender: 'male',
+      ethnicity: '',
+      childProvinceCode: '',
+      childWardCode: '',
+      childAddressDetail: '',
+      healthStatus: '',
+      reason: '',
+      reasonDetail: '',
+    },
+  });
 
-  const STEP_FIELDS = {
-    1: ['senderName', 'relationship', 'senderNationalId', 'senderPhone', 'senderAddress'],
-    2: ['childName', 'childDob'],
-    3: ['reason', 'reasonDetail'],
-  };
+  const senderTypeCode = watch('senderTypeCode');
+  const senderProvinceCode = watch('senderProvinceCode');
+  const childProvinceCode = watch('childProvinceCode');
 
-  const goNext = async () => {
-    if (step < 4) {
-      const fields = STEP_FIELDS[step];
-      const ok = fields ? await trigger(fields) : true;
-      if (!ok) return;
-    }
-    animateTo(step + 1, 'forward');
-  };
+  const senderProvinceOptions = LOCATION_DATA;
+  const childProvinceOptions = LOCATION_DATA;
 
-  const goPrev = () => animateTo(step - 1, 'back');
+  const senderWardOptions = useMemo(() => {
+    const selected = LOCATION_DATA.find(
+      (item) => item.provinceCode === senderProvinceCode
+    );
+    return selected?.wards ?? [];
+  }, [senderProvinceCode]);
 
-  const animateTo = (target, direction) => {
-    setDir(direction);
-    setVisible(false);
-    setTimeout(() => { setStep(target); setVisible(true); }, 220);
-  };
+  const childWardOptions = useMemo(() => {
+    const selected = LOCATION_DATA.find(
+      (item) => item.provinceCode === childProvinceCode
+    );
+    return selected?.wards ?? [];
+  }, [childProvinceCode]);
 
-  const onSubmit = async () => {
-    await new Promise(r => setTimeout(r, 1000));
+  useEffect(() => {
+    setValue('senderWardCode', '');
+  }, [senderProvinceCode, setValue]);
+
+  useEffect(() => {
+    setValue('childWardCode', '');
+  }, [childProvinceCode, setValue]);
+
+  const selectedSenderType = SENDER_TYPES.find(
+    (item) => item.code === senderTypeCode
+  );
+
+  const docsConfig = useMemo(() => {
+    return BASE_DOCS.map((doc) => ({
+      ...doc,
+      required: selectedSenderType?.requireDocs ? doc.baseRequired : false,
+    }));
+  }, [selectedSenderType]);
+
+  const requiredMissing = docsConfig.filter(
+    (doc) => doc.required && !docs[doc.key]
+  ).length;
+
+  const onSubmit = async (data) => {
+    const payload = {
+      nguoiGui: {
+        hoTen: data.senderName,
+        maLoaiNguoiGui: data.senderTypeCode,
+        soCCCD: data.senderNationalId,
+        soDienThoai: data.senderPhone,
+        maXa: data.senderWardCode,
+        diaChiCuThe: data.senderAddressDetail,
+      },
+      tre: {
+        hoTen: data.childName,
+        ngaySinh: data.childDob,
+        gioiTinh: data.childGender,
+        danToc: data.ethnicity,
+        maXa: data.childWardCode,
+        diaChiCuThe: data.childAddressDetail,
+        tinhTrangSucKhoe: data.healthStatus,
+      },
+      lyDo: {
+        maLyDo: data.reason,
+        moTaChiTiet: data.reasonDetail,
+      },
+      giayTo: Object.entries(docs)
+        .filter(([, file]) => !!file)
+        .map(([key, file]) => ({
+          loaiGiayTo: key,
+          tenFile: file.name,
+          kichThuoc: file.size,
+        })),
+    };
+
+    console.log('Payload gửi đi:', payload);
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     navigate('/gui-tre/trang-thai');
   };
 
-  const requiredMissing = REQUIRED_DOCS.filter(d => d.required && !docs[d.key]).length;
-
   return (
-    <div className="min-h-screen bg-[#F5F9FE]">
-      <div className="mx-auto max-w-[860px] px-4 py-6 sm:px-6 lg:px-8 space-y-5">
-
-        {/* ── Page header ─────────────────────────────────── */}
-        <div>
-          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#8FA0B8] mb-2">
-            <button onClick={() => navigate('/gui-tre/dashboard')} className="hover:text-[#0D47A1] transition-colors">Tổng quan</button>
-            <span>/</span>
-            <span className="text-[#334155]">Tạo yêu cầu giao trẻ</span>
-          </div>
-          <h1 className="text-[36px] font-bold text-[#0D47A1] leading-none">Tạo yêu cầu giao trẻ</h1>
-          <p className="text-sm text-[#8FA0B8] mt-2">Điền đầy đủ thông tin để hồ sơ được xét duyệt nhanh chóng</p>
-        </div>
-
-        {/* ── Step form ──────────────────────────────────── */}
-        <div className={`${card28} p-6 sm:p-8`}>
-          <StepIndicator current={step} />
-
-          <div
-            className="transition-all duration-200"
-            style={{
-              opacity: visible ? 1 : 0,
-              transform: visible ? 'translateX(0)' : dir === 'forward' ? 'translateX(20px)' : 'translateX(-20px)',
-            }}
-          >
-            <form onSubmit={handleSubmit(onSubmit)}>
-              {step === 1 && <Step1 register={register} errors={errors} />}
-              {step === 2 && <Step2 register={register} errors={errors} />}
-              {step === 3 && <Step3 register={register} errors={errors} />}
-              {step === 4 && <Step4 docs={docs} setDocs={setDocs} />}
-
-              {/* Navigation */}
-              <div className="flex items-center justify-between mt-8 pt-6 border-t border-[#E3ECF8]">
-                <button
-                  type="button"
-                  onClick={goPrev}
-                  disabled={step === 1}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-2xl border-2 border-[#DCE8F7] text-[#5F81BC] font-semibold text-sm hover:border-[#0D47A1] hover:text-[#0D47A1] disabled:opacity-30 disabled:cursor-not-allowed transition"
-                >
-                  ← Quay lại
-                </button>
-
-                <div className="flex items-center gap-1.5">
-                  {STEPS.map(s => (
-                    <div key={s.id} className={`h-1.5 rounded-full transition-all duration-300
-                      ${s.id === step ? 'w-6 bg-[#0D47A1]' : s.id < step ? 'w-3 bg-emerald-400' : 'w-3 bg-[#E3ECF8]'}`} />
-                  ))}
-                </div>
-
-                {step < 4 ? (
-                  <button
-                    type="button"
-                    onClick={goNext}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-[#0D47A1] hover:bg-[#1565C0] text-white font-semibold text-sm transition shadow-md shadow-blue-200"
-                  >
-                    Tiếp theo →
-                  </button>
-                ) : (
-                  <button
-                    type="submit"
-                    disabled={isSubmitting || requiredMissing > 0}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-[#0D47A1] hover:bg-[#1565C0] disabled:bg-[#8FA0B8] disabled:cursor-not-allowed text-white font-semibold text-sm transition shadow-md"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Đang gửi...
-                      </>
-                    ) : '📤 Gửi hồ sơ'}
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-        </div>
-
-        {/* Info strips */}
-        {step === 4 && requiredMissing > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex gap-3">
-            <span className="text-lg flex-shrink-0">⚠️</span>
-            <div>
-              <p className="text-sm font-bold text-red-700">Còn thiếu tài liệu bắt buộc</p>
-              <p className="text-xs text-red-600 mt-0.5">Vui lòng tải lên {requiredMissing} tài liệu bắt buộc trước khi gửi hồ sơ.</p>
+    <div className="w-full bg-[#f6f8fc] min-h-screen">
+      <div className="max-w-[1500px] mx-auto px-3 lg:px-4 py-8">
+        <PageHeader />
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:items-stretch">
+            {/* Hàng 1 */}
+            <div className="lg:col-span-8">
+              <ApplicantSection
+                register={register}
+                errors={errors}
+                senderProvinceOptions={senderProvinceOptions}
+                senderWardOptions={senderWardOptions}
+                senderTypeCode={senderTypeCode}
+              />
             </div>
-          </div>
-        )}
 
-        <div className="bg-[#EAF3FF] border border-[#DCE8F7] rounded-2xl p-4 flex gap-3">
-          <span className="text-lg flex-shrink-0">📞</span>
-          <div>
-            <p className="text-sm font-bold text-[#0D47A1]">Đường dây hỗ trợ</p>
-            <p className="text-xs text-[#5F81BC] mt-0.5">
-              <strong>1800 599 920</strong> — Miễn phí · 7:00–17:00 (Thứ 2 – Thứ 6)
-            </p>
+            <div className="lg:col-span-4 h-full">
+              <div className="grid h-full grid-rows-[1fr_auto] gap-5">
+                <NotesCard />
+
+                <SubmitCard
+                  isSubmitting={isSubmitting}
+                  requiredMissing={requiredMissing}
+                  onCancel={() => navigate(-1)}
+                />
+              </div>
+            </div>
+
+            {/* Hàng 2 */}
+            <div className="lg:col-span-8">
+              <ChildSection
+                register={register}
+                errors={errors}
+                childProvinceOptions={childProvinceOptions}
+                childWardOptions={childWardOptions}
+              />
+            </div>
+
+            <div className="lg:col-span-4">
+              <ImageCard />
+            </div>
+
+            {/* Hàng 3 */}
+            <div className="lg:col-span-8">
+              <ReasonSection register={register} errors={errors} />
+            </div>
+
+            {/* Hàng 4 */}
+            <div className="lg:col-span-8">
+              <DocumentsSection
+                docs={docs}
+                setDocs={setDocs}
+                docsConfig={docsConfig}
+              />
+            </div>
+
+            {requiredMissing > 0 && (
+              <div className="lg:col-span-8">
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                  <p className="text-sm font-semibold text-red-700">
+                    Còn thiếu tài liệu bắt buộc
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-red-600">
+                    Vui lòng tải lên {requiredMissing} tài liệu bắt buộc trước khi
+                    gửi hồ sơ.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

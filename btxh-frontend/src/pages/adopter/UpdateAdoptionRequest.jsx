@@ -202,9 +202,6 @@ export default function UpdateAdoptionRequest() {
     <div className="min-h-screen bg-[#F5F9FE]">
       <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8EA0B8]">
-            Cập nhật hồ sơ
-          </p>
           <h1 className="mt-2 !text-[36px] font-bold !text-[#0D47A1]">
             Cập nhật đơn nhận nuôi
           </h1>

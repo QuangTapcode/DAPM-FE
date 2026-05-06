@@ -3,6 +3,9 @@ import { useForm } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import adoptionApi from '../../api/adoptionApi';
 import FileUpload from '../../components/common/FileUpload';
+import user from '../../assets/user.png';
+import document from '../../assets/document.png';
+import family from '../../assets/adoption_family.jpg';
 
 const labelClass =
   'block text-[13px] font-semibold uppercase tracking-wide text-[#44474E] mb-2';
@@ -14,6 +17,8 @@ const textareaClass =
   'w-full rounded-xl border border-[#e6edf7] bg-[#f7fbff] px-4 py-3 text-sm text-[#334155] outline-none transition resize-none focus:border-[#93c5fd] focus:ring-2 focus:ring-[#bfdbfe]';
 
 const errorClass = 'mt-1 text-xs text-red-500';
+
+const REQUIRED_FILE_KEYS = ['idCard', 'health', 'marriage', 'income'];
 
 function FieldError({ message }) {
   if (!message) return null;
@@ -40,7 +45,7 @@ function ApplicantSection({ register, errors }) {
     <section className="rounded-2xl bg-white border border-[#edf2f7] shadow-sm p-5 lg:p-6">
       <div className="flex items-center gap-2 mb-5">
         <img
-          src="/images/user.png"
+          src={user}
           alt="User icon"
           className="w-4 h-4 object-contain"
         />
@@ -112,13 +117,19 @@ function ApplicantSection({ register, errors }) {
 
         <div>
           <label className={labelClass}>Thu nhập hàng tháng</label>
-          <select {...register('monthlyIncome')} className={inputClass}>
-            <option value="">Chọn mức thu nhập</option>
-            <option value="duoi-10">Dưới 10 triệu</option>
-            <option value="10-20">Từ 10 đến 20 triệu</option>
-            <option value="20-30">Từ 20 đến 30 triệu</option>
-            <option value="tren-30">Trên 30 triệu</option>
-          </select>
+          <input
+            type="number" min="0" step="100000" placeholder="Ví dụ: 15000000"
+            {...register('monthlyIncome', {
+              required: 'Vui lòng nhập thu nhập hàng tháng',
+              min: { value: 0, message: 'Thu nhập không được nhỏ hơn 0', },
+              valueAsNumber: true,
+            })}
+            className={inputClass}
+          />
+          <p className="mt-1 text-xs text-gray-500">Nhập số tiền theo VNĐ/tháng, ví dụ 15000000 tương ứng 15 triệu đồng.</p>
+          {errors.monthlyIncome && (
+            <p className="mt-1 text-sm text-red-500">{errors.monthlyIncome.message}</p>
+          )}
         </div>
       </div>
 
@@ -148,7 +159,7 @@ function ApplicantSection({ register, errors }) {
   );
 }
 
-function DocumentsSection({ files, setFiles }) {
+function DocumentsSection({ files, setFiles, showMissingDocsWarning }) {
   const titleClass =
     'text-[11px] font-semibold uppercase tracking-wide text-[#7f8c9b] mb-3';
 
@@ -156,7 +167,7 @@ function DocumentsSection({ files, setFiles }) {
     <section className="rounded-2xl bg-white border border-[#edf2f7] shadow-sm p-5 lg:p-6">
       <div className="flex items-center gap-2 mb-5">
         <img
-          src="/images/document.png"
+          src={document}
           alt="Document icon"
           className="w-4 h-4 object-contain"
         />
@@ -167,7 +178,9 @@ function DocumentsSection({ files, setFiles }) {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <p className={titleClass}>Ảnh CCCD</p>
+          <p className={titleClass}>
+            Ảnh CCCD <span className="text-red-500">*</span>
+          </p>
           <FileUpload
             label="Tải ảnh trước & sau"
             accept=".pdf,.jpg,.jpeg,.png"
@@ -179,7 +192,9 @@ function DocumentsSection({ files, setFiles }) {
         </div>
 
         <div>
-          <p className={titleClass}>Giấy khám sức khỏe</p>
+          <p className={titleClass}>
+            Giấy khám sức khỏe <span className="text-red-500">*</span>
+          </p>
           <FileUpload
             label="Hồ sơ sức khỏe"
             accept=".pdf,.jpg,.jpeg,.png"
@@ -191,7 +206,9 @@ function DocumentsSection({ files, setFiles }) {
         </div>
 
         <div>
-          <p className={titleClass}>Tình trạng hôn nhân</p>
+          <p className={titleClass}>
+            Tình trạng hôn nhân <span className="text-red-500">*</span>
+          </p>
           <FileUpload
             label="Giấy xác nhận"
             accept=".pdf,.jpg,.jpeg,.png"
@@ -203,7 +220,9 @@ function DocumentsSection({ files, setFiles }) {
         </div>
 
         <div className="md:col-span-1">
-          <p className={titleClass}>Minh chứng thu nhập</p>
+          <p className={titleClass}>
+            Minh chứng thu nhập <span className="text-red-500">*</span>
+          </p>
           <FileUpload
             label="Chọn file PDF/JPG"
             accept=".pdf,.jpg,.jpeg,.png"
@@ -214,6 +233,12 @@ function DocumentsSection({ files, setFiles }) {
           />
         </div>
       </div>
+
+      {showMissingDocsWarning && (
+        <p className="mt-4 text-sm text-red-500 leading-6">
+          Vui lòng tải đầy đủ các giấy tờ bắt buộc trước khi gửi hồ sơ.
+        </p>
+      )}
     </section>
   );
 }
@@ -273,7 +298,7 @@ function ImageCard() {
     <section className="overflow-hidden rounded-2xl border border-[#edf2f7] shadow-sm bg-white">
       <div className="relative aspect-[4/3] w-full">
         <img
-          src="/images/adoption_family.jpg"
+          src={family}
           alt="Gia đình nhận nuôi"
           className="h-full w-full object-cover"
         />
@@ -320,8 +345,16 @@ export default function CreateAdoptionRequest() {
     marriage: [],
     income: [],
   });
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const navigate = useNavigate();
+
+  const missingRequiredDocs = REQUIRED_FILE_KEYS.filter(
+    (key) => !files[key] || files[key].length === 0
+  );
+
+  const canSubmit = missingRequiredDocs.length === 0;
+  const showMissingDocsWarning = submitAttempted && !canSubmit;
 
   const {
     register,
@@ -330,21 +363,34 @@ export default function CreateAdoptionRequest() {
   } = useForm({
     defaultValues: {
       childId: searchParams.get('childId') || '',
-      adopterName: '',
-      phone: '',
-      gender: 'Nam',
-      nationalId: '',
-      birthDate: '',
-      address: '',
-      occupation: '',
-      monthlyIncome: '',
+      adopterName: user?.fullName || '',
+      phone: user?.phone || '',
+      gender: user?.gender || 'Nam',
+      nationalId: user?.nationalId || '',
+      birthDate: user?.dateOfBirth || user?.birthDate || '',
+      address: [
+        user?.addressDetail,
+        user?.wardName,
+        user?.provinceName,
+      ]
+        .filter(Boolean)
+        .join(', '),
+      occupation: user?.occupation || '',
+      monthlyIncome: user?.monthlyIncome || '',
       motivation: '',
       expectedChild: '',
     },
   });
 
   const onSubmit = async (data) => {
+    if (!canSubmit) {
+      setSubmitAttempted(true);
+      return;
+    }
+
     try {
+      setSubmitAttempted(false);
+
       const formData = new FormData();
 
       Object.entries(data).forEach(([key, value]) => {
@@ -377,14 +423,17 @@ export default function CreateAdoptionRequest() {
 
   return (
     <div className="w-full bg-[#f6f8fc] min-h-screen">
-      <div className="max-w-6xl mx-auto px-4 lg:px-6 py-8">
+      <div className="max-w-[1500px] mx-auto px-3 lg:px-4 py-8">
         <PageHeader />
-
         <form onSubmit={handleSubmit(onSubmit)} className="mt-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             <div className="lg:col-span-8 space-y-5">
               <ApplicantSection register={register} errors={errors} />
-              <DocumentsSection files={files} setFiles={setFiles} />
+              <DocumentsSection
+                files={files}
+                setFiles={setFiles}
+                showMissingDocsWarning={showMissingDocsWarning}
+              />
             </div>
 
             <div className="lg:col-span-4 space-y-5">

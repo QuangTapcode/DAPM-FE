@@ -1,140 +1,307 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
 import { useFetch } from '../../hooks/useFetch';
 import adoptionApi from '../../api/adoptionApi';
-import Pagination from '../../components/common/Pagination';
-import { REQUEST_STATUS } from '../../utils/constants';
 import { formatDate } from '../../utils/formatDate';
+import Badge from '../../components/common/Badge';
 
-const STATUS_META = {
-  [REQUEST_STATUS.PENDING]:  { label: 'Chờ xử lý', pill: 'bg-amber-50 text-amber-700 border border-amber-200',     dot: 'bg-amber-400' },
-  [REQUEST_STATUS.APPROVED]: { label: 'Đã duyệt',   pill: 'bg-emerald-50 text-emerald-700 border border-emerald-200', dot: 'bg-emerald-400' },
-  [REQUEST_STATUS.REJECTED]: { label: 'Từ chối',    pill: 'bg-red-50 text-red-700 border border-red-200',           dot: 'bg-red-400' },
-};
+const cardClass =
+  'rounded-[28px] border border-[#DCE8F6] bg-white shadow-[0_14px_40px_rgba(42,74,122,0.06)]';
 
-const card28 = 'rounded-[28px] border border-[#E3ECF8] bg-white shadow-[0_14px_36px_rgba(42,74,122,0.08)]';
-
-const FALLBACK = [
-  { id: 1, adopterName: 'Nguyễn Văn A', childName: 'Bé An',    status: REQUEST_STATUS.PENDING,  createdAt: new Date() },
-  { id: 2, adopterName: 'Trần Thị B',   childName: 'Bé Bình',  status: REQUEST_STATUS.APPROVED, createdAt: new Date() },
-  { id: 3, adopterName: 'Lê Văn C',     childName: 'Bé Cường', status: REQUEST_STATUS.REJECTED, createdAt: new Date() },
-  { id: 4, adopterName: 'Phạm Văn D',   childName: 'Bé Duy',   status: REQUEST_STATUS.PENDING,  createdAt: new Date() },
-  { id: 5, adopterName: 'Hoàng Văn E',  childName: 'Bé Hải',   status: REQUEST_STATUS.PENDING,  createdAt: new Date() },
+const fallbackRequests = [
+  {
+    MaYeuCauNhan: 'YCNN0006',
+    TenNguoiNhan: 'Nguyễn Minh Anh',
+    SDTNguoiNhan: '0901234567',
+    NgheNghiep: 'Nhân viên văn phòng',
+    ThuNhapHangThang: 18000000,
+    NgayTao: '2026-03-18',
+    TrangThai: 'Chờ xử lý',
+    SoGiayTo: 4,
+    SoGiayToHopLe: 2,
+  },
+  {
+    MaYeuCauNhan: 'YCNN0005',
+    TenNguoiNhan: 'Trần Quốc Huy',
+    SDTNguoiNhan: '0912345678',
+    NgheNghiep: 'Kỹ sư xây dựng',
+    ThuNhapHangThang: 25000000,
+    NgayTao: '2026-03-17',
+    TrangThai: 'Đang xem xét',
+    SoGiayTo: 4,
+    SoGiayToHopLe: 4,
+  },
+  {
+    MaYeuCauNhan: 'YCNN0004',
+    TenNguoiNhan: 'Lê Thanh Mai',
+    SDTNguoiNhan: '0987654321',
+    NgheNghiep: 'Giáo viên',
+    ThuNhapHangThang: 22000000,
+    NgayTao: '2026-03-15',
+    TrangThai: 'Chờ ghép trẻ',
+    SoGiayTo: 4,
+    SoGiayToHopLe: 4,
+  },
+  {
+    MaYeuCauNhan: 'YCNN0003',
+    TenNguoiNhan: 'Phạm Hoàng Nam',
+    SDTNguoiNhan: '0934567890',
+    NgheNghiep: 'Chủ hộ kinh doanh',
+    ThuNhapHangThang: 30000000,
+    NgayTao: '2026-03-12',
+    TrangThai: 'Đã duyệt',
+    SoGiayTo: 4,
+    SoGiayToHopLe: 4,
+  },
+  {
+    MaYeuCauNhan: 'YCNN0002',
+    TenNguoiNhan: 'Võ Thị Hạnh',
+    SDTNguoiNhan: '0977777777',
+    NgheNghiep: 'Kế toán',
+    ThuNhapHangThang: 16000000,
+    NgayTao: '2026-03-10',
+    TrangThai: 'Từ chối',
+    SoGiayTo: 3,
+    SoGiayToHopLe: 1,
+  },
 ];
 
-const TABS = [
-  { label: 'Tất cả',     value: '' },
-  { label: 'Chờ xử lý', value: REQUEST_STATUS.PENDING },
-  { label: 'Đã duyệt',  value: REQUEST_STATUS.APPROVED },
-  { label: 'Từ chối',   value: REQUEST_STATUS.REJECTED },
+const filterTabs = [
+  { key: 'all', label: 'Tất cả' },
+  { key: 'Chờ xử lý', label: 'Chờ xử lý' },
+  { key: 'Chờ ghép trẻ', label: 'Chờ ghép trẻ' },
+  { key: 'Đã duyệt', label: 'Đã duyệt' },
+  { key: 'Từ chối', label: 'Từ chối' },
+  { key: 'Đã hoàn tất', label: 'Đã hoàn tất' },
 ];
+
+function normalizeRequests(data) {
+  const raw = Array.isArray(data) ? data : data?.items;
+
+  if (!raw || raw.length === 0) return fallbackRequests;
+
+  return raw.map((item) => ({
+    MaYeuCauNhan: item.MaYeuCauNhan || item.maYeuCauNhan || item.id,
+    TenNguoiNhan:
+      item.TenNguoiNhan || item.tenNguoiNhan || item.adopterName || 'Chưa rõ',
+    SDTNguoiNhan:
+      item.SDTNguoiNhan || item.sdtNguoiNhan || item.phone || 'Chưa cập nhật',
+    NgheNghiep:
+      item.NgheNghiep || item.ngheNghiep || item.job || 'Chưa cập nhật',
+    ThuNhapHangThang:
+      item.ThuNhapHangThang ?? item.thuNhapHangThang ?? item.monthlyIncome,
+    NgayTao: item.NgayTao || item.ngayTao || item.createdAt,
+    TrangThai: item.TrangThai || item.trangThai || item.status || 'Chờ xử lý',
+    SoGiayTo: item.SoGiayTo ?? item.soGiayTo ?? item.totalDocuments ?? 0,
+    SoGiayToHopLe:
+      item.SoGiayToHopLe ?? item.soGiayToHopLe ?? item.validDocuments ?? 0,
+  }));
+}
+
+function formatCurrency(value) {
+  if (value === null || value === undefined || value === '') {
+    return 'Chưa cập nhật';
+  }
+
+  return `${new Intl.NumberFormat('vi-VN').format(Number(value))} đ`;
+}
+
+function getStaffDisplayStatus(status) {
+  if (status === 'Đang xem xét') return 'Chờ xử lý';
+  return status;
+}
 
 export default function AdoptionRequestList() {
-  const { user } = useAuth();
-  const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState('');
+  const { data, loading } = useFetch(adoptionApi.getAll);
+  const [keyword, setKeyword] = useState('');
+  const [filter, setFilter] = useState('all');
 
-  const { data, loading } = useFetch(
-    () => adoptionApi.getAll({ page, status: statusFilter }),
-    [page, statusFilter]
-  );
+  const requests = useMemo(() => normalizeRequests(data), [data]);
 
-  const items = data?.items?.length ? data.items : FALLBACK;
-  const filtered = statusFilter ? items.filter(i => i.status === statusFilter) : items;
+  const filteredRequests = useMemo(() => {
+    const kw = keyword.trim().toLowerCase();
+
+    return requests.filter((item) => {
+      const displayStatus = getStaffDisplayStatus(item.TrangThai);
+
+      const matchFilter = filter === 'all' || displayStatus === filter;
+
+      const searchable = [
+        item.MaYeuCauNhan,
+        item.TenNguoiNhan,
+        item.SDTNguoiNhan,
+        item.NgheNghiep,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      const matchKeyword = !kw || searchable.includes(kw);
+
+      return matchFilter && matchKeyword;
+    });
+  }, [requests, keyword, filter]);
 
   return (
-    <div className="min-h-screen bg-[#F5F9FE]">
-      <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+    <div className="min-h-screen bg-[#F4F8FF]">
+      <div className="mx-auto max-w-[1720px] space-y-6 px-5 py-7 sm:px-8 lg:px-10">
+        {/* Header đơn giản, không bọc khung */}
+        <header className="flex flex-col justify-between gap-5 border-b border-[#DCE8F6] pb-6 lg:flex-row lg:items-end">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6F83A3]">
+              Cán bộ quản lý nhận nuôi
+            </p>
 
-        {/* HEADER */}
-        <div>
-          <h1 className="text-[36px] font-bold text-[#0D47A1] leading-none">Danh sách đơn nhận nuôi</h1>
-          <p className="text-sm text-[#8FA0B8] mt-2">Xin chào, {user?.fullName || 'Cán bộ'}</p>
-        </div>
+            <h1 className="mt-2 text-[34px] font-bold leading-tight !text-[#0D47A1] md:text-[42px]">
+              Danh sách yêu cầu nhận nuôi
+            </h1>
+          </div>
 
-        {/* TABS */}
-        <div className="flex gap-2 flex-wrap">
-          {TABS.map(tab => (
-            <button key={tab.value}
-              onClick={() => { setStatusFilter(tab.value); setPage(1); }}
-              className={`px-5 py-2 rounded-2xl text-sm font-semibold transition-colors ${
-                statusFilter === tab.value
-                  ? 'bg-[#0D47A1] text-white shadow-md'
-                  : 'bg-white border border-[#E3ECF8] text-[#5F81BC] hover:bg-[#EAF3FF]'
-              }`}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
+          <Link
+            to="/can-bo-nhan-nuoi/dashboard"
+            className="w-fit rounded-2xl border border-[#CFE0F5] bg-white px-5 py-3 text-sm font-bold text-[#0D47A1] transition hover:bg-[#EEF6FF]"
+          >
+            Quay về tổng quan
+          </Link>
+        </header>
 
-        {/* TABLE CARD */}
-        <div className={`${card28} overflow-hidden`}>
+        {/* Bộ lọc */}
+        <section className={`${cardClass} p-5`}>
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {filterTabs.map((tab) => {
+                const active = filter === tab.key;
+
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setFilter(tab.key)}
+                    className={`rounded-2xl px-4 py-2 text-sm font-bold transition ${active
+                      ? 'bg-[#0D47A1] text-white shadow-sm'
+                      : 'border border-[#D7E5F7] bg-white text-[#5E7597] hover:bg-[#F4F8FF]'
+                      }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="w-full xl:w-[460px]">
+              <input
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder="Tìm theo mã yêu cầu, tên, số điện thoại..."
+                className="w-full rounded-2xl border border-[#D7E5F7] bg-[#F8FBFF] px-4 py-3 text-sm font-medium text-[#26364A] outline-none transition placeholder:text-[#9AACBF] focus:border-[#4B82C4] focus:bg-white"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Table */}
+        <section className={`${cardClass} overflow-hidden`}>
+          <div className="flex items-center justify-between border-b border-[#E3ECF8] px-7 py-5">
+            <div>
+              <h2 className="text-lg font-bold text-[#0D47A1]">
+                Yêu cầu nhận nuôi
+              </h2>
+              <p className="mt-1 text-sm text-[#8FA0B8]">
+                Hiển thị {filteredRequests.length} / {requests.length} yêu cầu.
+              </p>
+            </div>
+          </div>
+
           {loading ? (
             <div className="flex justify-center py-16">
-              <div className="w-8 h-8 border-4 border-[#0D47A1]/20 border-t-[#0D47A1] rounded-full animate-spin"/>
+              <div className="h-9 w-9 animate-spin rounded-full border-4 border-[#0D47A1]/20 border-t-[#0D47A1]" />
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#F0F5FC]">
-                    {['Người nhận nuôi', 'Trẻ đăng ký', 'Ngày nộp', 'Trạng thái', 'Thao tác'].map(h => (
-                      <th key={h} className="px-6 pb-3 pt-4 text-left text-[11px] font-bold uppercase tracking-[0.14em] text-[#8FA0B8]">{h}</th>
-                    ))}
+              <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
+                <thead className="bg-[#F7FAFF] text-[11px] uppercase tracking-[0.14em] text-[#8FA0B8]">
+                  <tr>
+                    <th className="px-6 py-4 font-bold">Mã yêu cầu</th>
+                    <th className="px-6 py-4 font-bold">Người nhận nuôi</th>
+                    <th className="px-6 py-4 font-bold">Nghề nghiệp</th>
+                    <th className="px-6 py-4 font-bold">Ngày tạo</th>
+                    <th className="px-6 py-4 font-bold">Thu nhập</th>
+                    <th className="px-6 py-4 font-bold">Giấy tờ</th>
+                    <th className="px-6 py-4 font-bold">Trạng thái</th>
+                    <th className="px-6 py-4 text-right font-bold">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#F0F5FC]">
-                  {filtered.map(item => {
-                    const m = STATUS_META[item.status] || STATUS_META[REQUEST_STATUS.PENDING];
+
+                <tbody className="divide-y divide-[#EDF3FB]">
+                  {filteredRequests.map((item) => {
+                    const displayStatus = getStaffDisplayStatus(item.TrangThai);
+
                     return (
-                      <tr key={item.id} className="hover:bg-[#F5F9FE] transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-[#EAF3FF] flex items-center justify-center font-bold text-[#0D47A1] text-sm shrink-0">
-                              {item.adopterName?.[0] || '?'}
-                            </div>
-                            <span className="font-semibold text-[15px] text-[#334155]">{item.adopterName}</span>
-                          </div>
+                      <tr
+                        key={item.MaYeuCauNhan}
+                        className="transition hover:bg-[#F7FAFF]"
+                      >
+                        <td className="px-6 py-5 font-bold text-[#0D47A1]">
+                          {item.MaYeuCauNhan}
                         </td>
-                        <td className="px-6 py-4 text-[#334155]">{item.childName}</td>
-                        <td className="px-6 py-4 text-[#8FA0B8]">{formatDate(item.createdAt)}</td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-semibold uppercase ${m.pill}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${m.dot}`}/>
-                            {m.label}
+
+                        <td className="px-6 py-5">
+                          <p className="font-bold text-[#26364A]">
+                            {item.TenNguoiNhan}
+                          </p>
+                          <p className="mt-1 text-xs text-[#8FA0B8]">
+                            {item.SDTNguoiNhan}
+                          </p>
+                        </td>
+
+                        <td className="px-6 py-5 text-[#6F83A3]">
+                          {item.NgheNghiep}
+                        </td>
+
+                        <td className="px-6 py-5 text-[#6F83A3]">
+                          {formatDate(item.NgayTao)}
+                        </td>
+
+                        <td className="px-6 py-5 font-semibold text-[#26364A]">
+                          {formatCurrency(item.ThuNhapHangThang)}
+                        </td>
+
+                        <td className="px-6 py-5">
+                          <span className="font-bold text-[#26364A]">
+                            {item.SoGiayToHopLe}/{item.SoGiayTo}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            {item.status === REQUEST_STATUS.PENDING && (
-                              <>
-                                <button className="px-3 py-1.5 bg-emerald-500 text-white rounded-xl text-xs font-semibold hover:bg-emerald-600 transition-colors">Duyệt</button>
-                                <button className="px-3 py-1.5 bg-red-500 text-white rounded-xl text-xs font-semibold hover:bg-red-600 transition-colors">Từ chối</button>
-                              </>
-                            )}
-                            <Link to={`/can-bo-nhan-nuoi/chi-tiet/${item.id}`}
-                              className="px-3 py-1.5 border border-[#DCE8F7] text-[#5F81BC] rounded-xl text-xs font-semibold hover:bg-[#EAF3FF] transition-colors">
-                              Xem
-                            </Link>
-                          </div>
+
+                        <td className="px-6 py-5">
+                          <Badge status={displayStatus} size="md" />
+                        </td>
+
+                        <td className="px-6 py-5 text-right">
+                          <Link
+                            to={`/can-bo-nhan-nuoi/chi-tiet/${item.MaYeuCauNhan}`}
+                            className="rounded-xl bg-[#0D47A1] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#083778]"
+                          >
+                            Xem chi tiết
+                          </Link>
                         </td>
                       </tr>
                     );
                   })}
-                  {filtered.length === 0 && (
+
+                  {filteredRequests.length === 0 && (
                     <tr>
-                      <td colSpan="5" className="text-center py-12 text-[#8FA0B8] text-sm">Không có dữ liệu</td>
+                      <td
+                        colSpan="8"
+                        className="px-6 py-14 text-center text-sm text-[#8FA0B8]"
+                      >
+                        Không tìm thấy yêu cầu nhận nuôi phù hợp.
+                      </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
           )}
-        </div>
-
-        {/* PAGINATION */}
-        <Pagination page={page} totalPages={data?.totalPages || 1} onPageChange={setPage}/>
+        </section>
       </div>
     </div>
   );

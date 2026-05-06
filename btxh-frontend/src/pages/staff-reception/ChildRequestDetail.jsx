@@ -1,260 +1,299 @@
-import { useState } from 'react';
-import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { useBasePath } from '../../hooks/useBasePath';
+import { useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useFetch } from '../../hooks/useFetch';
 import receptionApi from '../../api/receptionApi';
 import { formatDate } from '../../utils/formatDate';
+import { useBasePath } from '../../hooks/useBasePath';
 
-const avatarUrl = (seed = 'child', bg = 'b6e3f4') =>
-  `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${bg}&backgroundType=solid`;
+function normalizeStatus(status) {
+  return String(status || '').toLowerCase();
+}
 
-const DEMO_REQUESTS = [
-  {
-    id: 1, code: 'HS-9022',
-    childName: 'Nguyễn Văn Bình', childAge: 8, childGender: 'male', childDob: '2016-08-15',
-    avatar: avatarUrl('Binh', 'b6e3f4'),
-    senderName: 'Trần Thị Lan', relationship: 'Mẹ đẻ',
-    senderPhone: '0901 234 567', senderEmail: 'lan.tran@email.com',
-    createdAt: '2024-06-12', status: 'PENDING',
-    reason: 'Gia đình khó khăn, không đủ điều kiện nuôi dưỡng và lo cho trẻ đi học.',
-    healthStatus: 'Ổn định, không bệnh nền.',
-    documents: ['Giấy khai sinh', 'Chứng nhận hộ khẩu', 'Đơn xin gửi trẻ'],
-  },
-  {
-    id: 2, code: 'HS-9021',
-    childName: 'Lê Minh Anh', childAge: 5, childGender: 'female', childDob: '2019-03-20',
-    avatar: avatarUrl('Anh', 'ffd5dc'),
-    senderName: 'Lê Quang Hùng', relationship: 'Cha',
-    senderPhone: '0912 345 678', senderEmail: 'hung.le@email.com',
-    createdAt: '2024-05-11', status: 'APPROVED',
-    reason: 'Mẹ mất sớm, cha đi làm xa không có người chăm sóc trẻ.',
-    healthStatus: 'Sức khỏe bình thường, đã tiêm đủ vaccine cơ bản.',
-    documents: ['Giấy khai sinh', 'Giấy chứng tử (mẹ)', 'Xác nhận hoàn cảnh'],
-  },
-  {
-    id: 3, code: 'HS-9020',
-    childName: 'Trần Hoàng Long', childAge: 10, childGender: 'male', childDob: '2014-07-05',
-    avatar: avatarUrl('Long', 'c0aede'),
-    senderName: 'Phạm Văn Đức', relationship: 'Chú ruột',
-    senderPhone: '0978 456 789', senderEmail: 'duc.pham@email.com',
-    createdAt: '2024-05-10', status: 'REJECTED',
-    reason: 'Cha mẹ mất trong tai nạn, không có người thân ở gần.',
-    healthStatus: 'Cần bổ sung hồ sơ khám sức khỏe định kỳ.',
-    documents: ['Giấy khai sinh', 'Giấy chứng tử (cha mẹ)'],
-  },
-  {
-    id: 4, code: 'HS-9019',
-    childName: 'Phạm Thị Mai', childAge: 7, childGender: 'female', childDob: '2017-12-03',
-    avatar: avatarUrl('Mai', 'fce4ec'),
-    senderName: 'Nguyễn Văn Toàn', relationship: 'Bác ruột',
-    senderPhone: '0935 111 222', createdAt: '2024-04-28', status: 'PENDING',
-    reason: 'Mẹ đi lao động nước ngoài, bố mất năm 2023.',
-    healthStatus: 'Sức khỏe tốt, cận thị nhẹ.',
-  },
-  {
-    id: 5, code: 'HS-9018',
-    childName: 'Võ Đức Huy', childAge: 9, childGender: 'male', childDob: '2015-06-22',
-    avatar: avatarUrl('Huy', 'c8e6c9'),
-    senderName: 'Võ Thị Hồng', relationship: 'Dì ruột',
-    senderPhone: '0987 654 321', createdAt: '2024-04-15', status: 'APPROVED',
-    reason: 'Cha mẹ đều mất do tai nạn giao thông.',
-    healthStatus: 'Viêm xoang mãn tính, cần theo dõi.',
-  },
-  {
-    id: 6, code: 'HS-9017',
-    childName: 'Đặng Ngọc Hân', childAge: 4, childGender: 'female', childDob: '2020-09-14',
-    avatar: avatarUrl('Han', 'fff9c4'),
-    senderName: 'Đặng Văn Khoa', relationship: 'Cha',
-    senderPhone: '0911 222 333', createdAt: '2024-03-20', status: 'PENDING',
-    reason: 'Cha đơn thân, công việc không ổn định.',
-    healthStatus: 'Bình thường, đã tiêm vaccine đầy đủ.',
-  },
-  {
-    id: 7, code: 'HS-9016',
-    childName: 'Huỳnh Gia Bảo', childAge: 6, childGender: 'male', childDob: '2018-01-30',
-    avatar: avatarUrl('Bao', 'bbdefb'),
-    senderName: 'Trần Thị Nga', relationship: 'Cô giáo chủ nhiệm',
-    senderPhone: '0966 777 888', createdAt: '2024-03-05', status: 'APPROVED',
-    reason: 'Trẻ bị bỏ rơi, không xác định được cha mẹ.',
-    healthStatus: 'Suy dinh dưỡng nhẹ, cần chế độ ăn đặc biệt.',
-  },
-];
+function mapRequestDetail(item) {
+  if (!item) return null;
 
-const STATUS_LABEL = { PENDING: 'Chờ duyệt', APPROVED: 'Đã tiếp nhận', REJECTED: 'Cần bổ sung' };
-const STATUS_STYLE = { PENDING: 'bg-blue-100 text-blue-800', APPROVED: 'bg-green-100 text-green-800', REJECTED: 'bg-red-100 text-red-800' };
+  return {
+    id: item.id,
+    code: item.code || `GT-${String(item.id).padStart(6, '0')}`,
+    status: normalizeStatus(item.status),
 
-const InfoRow = ({ label, value }) => (
-  <div className="flex flex-col gap-0.5">
-    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
-    <p className="text-sm font-semibold text-slate-700">{value || '—'}</p>
-  </div>
-);
+    // người gửi
+    senderName: item.senderName || '',
+    senderType: item.senderType || '',
+    senderIdentityNumber: item.senderIdentityNumber || item.senderCccd || '',
+    senderPhone: item.senderPhone || '',
+    senderProvinceName: item.senderProvinceName || '',
+    senderWardName: item.senderWardName || '',
+    senderAddressDetail: item.senderAddressDetail || '',
 
-export default function ChildRequestDetail() {
-  const { id: paramId } = useParams();
-  const [searchParams] = useSearchParams();
-  const id = paramId || searchParams.get('id');
-  const navigate = useNavigate();
-  const basePath = useBasePath();
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectNote, setRejectNote] = useState('');
+    // trẻ
+    childName: item.childName || '',
+    childBirthDate: item.childBirthDate || '',
+    childGender: item.childGender || '',
+    childEthnicity: item.childEthnicity || '',
+    childProvinceName: item.childProvinceName || '',
+    childWardName: item.childWardName || '',
+    childAddressDetail: item.childAddressDetail || '',
+    childHealthStatus: item.childHealthStatus || '',
 
-  const { data: raw } = useFetch(() => id ? receptionApi.getById(id) : null, [id]);
-  const req = raw || DEMO_REQUESTS.find(r => r.id === Number(id)) || DEMO_REQUESTS[0];
+    // lý do
+    reasonCategory: item.reasonCategory || item.reason || '',
+    reasonDetail: item.reasonDetail || item.note || '',
 
-  const badge = STATUS_STYLE[req.status] || 'bg-slate-100 text-slate-500';
-  const label = STATUS_LABEL[req.status] || req.status;
+    // giấy tờ
+    documents: Array.isArray(item.documents) ? item.documents : [],
+
+    createdAt: item.createdAt || '',
+    updatedAt: item.updatedAt || '',
+  };
+}
+
+function StatusBadge({ status }) {
+  const config = {
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    approved: 'bg-green-50 text-green-700 border-green-200',
+    rejected: 'bg-red-50 text-red-700 border-red-200',
+    cancelled: 'bg-slate-50 text-slate-700 border-slate-200',
+  };
+
+  const labelMap = {
+    pending: 'Chờ xử lý',
+    approved: 'Đã tiếp nhận',
+    rejected: 'Từ chối / Bổ sung',
+    cancelled: 'Đã hủy',
+  };
 
   return (
-    <div className="min-h-screen bg-[#f3f7f9] p-6">
-      {/* Breadcrumb */}
-      <div className="mb-6">
-        <Link to={`${basePath}/yeu-cau`}
-          className="text-slate-400 hover:text-[#2c7a91] text-sm transition-colors flex items-center gap-1">
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M10 19l-7-7m0 0l7-7m-7 7h18" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-          </svg>
-          Danh sách yêu cầu
-        </Link>
-        <div className="flex items-center gap-3 mt-2">
-          <h1 className="text-2xl font-bold text-[#2c7a91]">Chi tiết yêu cầu #{req.code}</h1>
-          <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${badge}`}>{label}</span>
-        </div>
-      </div>
+    <span
+      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${config[status] || 'bg-slate-50 text-slate-700 border-slate-200'
+        }`}
+    >
+      {labelMap[status] || 'Không xác định'}
+    </span>
+  );
+}
 
-      <div className="grid grid-cols-12 gap-6">
-        {/* Cột thông tin chính */}
-        <div className="col-span-12 lg:col-span-8 space-y-6">
-          {/* Card trẻ */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-            <div className="flex items-center gap-2 mb-5 text-[#2c7a91]">
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-              </svg>
-              <h2 className="font-bold text-base">Thông tin trẻ</h2>
+function SectionCard({ title, children }) {
+  return (
+    <section className="rounded-[26px] border border-[#E3ECF8] bg-white p-5 shadow-[0_8px_24px_rgba(30,64,175,0.06)]">
+      <h2 className="mb-5 text-[22px] font-bold !text-[#5a9ef2]">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function FieldView({ label, value }) {
+  return (
+    <div>
+      <label className="mb-2 block text-[13px] font-bold uppercase tracking-[0.03em] text-[#334155]">
+        {label}
+      </label>
+      <div className="w-full rounded-2xl border border-[#D8E6F5] bg-[#F7FAFE] px-4 py-3 text-[15px] text-[#334155]">
+        {value || 'Chưa cập nhật'}
+      </div>
+    </div>
+  );
+}
+
+function TextAreaView({ label, value }) {
+  return (
+    <div>
+      <label className="mb-2 block text-[13px] font-bold uppercase tracking-[0.03em] text-[#334155]">
+        {label}
+      </label>
+      <div className="min-h-[120px] w-full rounded-2xl border border-[#D8E6F5] bg-[#F7FAFE] px-4 py-3 text-[15px] text-[#334155]">
+        {value || 'Chưa cập nhật'}
+      </div>
+    </div>
+  );
+}
+
+export default function ChildRequestDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const basePath = useBasePath();
+
+  const { data, loading, error } = useFetch(
+    () => receptionApi.getById(id),
+    [id]
+  );
+
+  const request = useMemo(() => mapRequestDetail(data), [data]);
+
+  if (loading) {
+    return (
+      <div className="py-12 text-center text-sm text-[#64748B]">
+        Đang tải chi tiết hồ sơ...
+      </div>
+    );
+  }
+
+  if (error || !request) {
+    return (
+      <div className="py-12 text-center text-sm text-red-500">
+        Không tải được thông tin hồ sơ.
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F5F9FE]">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-6 rounded-[28px] border border-[#E3ECF8] bg-white px-6 py-5 shadow-[0_8px_24px_rgba(30,64,175,0.06)]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <h1 className="text-[32px] font-bold text-[#0D47A1]">
+                  Hồ sơ {request.code}
+                </h1>
+                <StatusBadge status={request.status} />
+              </div>
+              <p className="mt-2 text-sm text-[#64748B]">
+                Ngày tạo: {formatDate(request.createdAt)} • Cập nhật:{' '}
+                {formatDate(request.updatedAt)}
+              </p>
             </div>
-            <div className="flex items-start gap-6">
-              <img src={req.avatar} alt={req.childName}
-                className="w-20 h-20 rounded-2xl object-cover bg-blue-50 shrink-0 shadow-sm"/>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4 flex-1">
-                <InfoRow label="Họ và tên"  value={req.childName}/>
-                <InfoRow label="Ngày sinh"  value={formatDate(req.childDob)}/>
-                <InfoRow label="Giới tính"  value={req.childGender === 'male' ? 'Nam' : 'Nữ'}/>
-                <InfoRow label="Tuổi"       value={req.childAge ? `${req.childAge} tuổi` : null}/>
-                <InfoRow label="Tình trạng sức khỏe" value={req.healthStatus}/>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => navigate(`${basePath}/yeu-cau`)}
+                className="rounded-2xl border border-[#D8E6F5] bg-white px-5 py-3 text-sm font-semibold text-[#64748B] transition hover:bg-[#F8FBFF]"
+              >
+                Quay lại
+              </button>
+
+              {request.status === 'pending' && (
+                <>
+                  <button
+                    type="button"
+                    className="rounded-2xl border border-[#F3C7C7] bg-white px-5 py-3 text-sm font-semibold text-[#C24141] transition hover:bg-red-50"
+                  >
+                    Yêu cầu bổ sung
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(`${basePath}/tao-ho-so/${request.id}`)
+                    }
+                    className="rounded-2xl bg-[#0D47A1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1565C0]"
+                  >
+                    Tiếp nhận yêu cầu
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {/* Thông tin người gửi trẻ */}
+          <SectionCard title="Thông tin người gửi trẻ">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <FieldView label="Họ và tên người gửi" value={request.senderName} />
+              <FieldView label="Loại người gửi trẻ" value={request.senderType} />
+              <FieldView label="Số CCCD" value={request.senderIdentityNumber} />
+              <FieldView label="Số điện thoại" value={request.senderPhone} />
+              <FieldView label="Tỉnh / Thành phố" value={request.senderProvinceName} />
+              <FieldView label="Xã / Phường" value={request.senderWardName} />
+              <div className="md:col-span-2">
+                <FieldView label="Địa chỉ cụ thể" value={request.senderAddressDetail} />
               </div>
             </div>
-          </div>
+          </SectionCard>
 
-          {/* Card người giao */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-            <div className="flex items-center gap-2 mb-5 text-[#2c7a91]">
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-              </svg>
-              <h2 className="font-bold text-base">Người giao trẻ</h2>
+          {/* Thông tin trẻ em */}
+          <SectionCard title="Thông tin trẻ em">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <FieldView label="Họ và tên trẻ" value={request.childName} />
+              <FieldView
+                label="Ngày sinh"
+                value={request.childBirthDate ? formatDate(request.childBirthDate) : ''}
+              />
+              <FieldView
+                label="Giới tính"
+                value={
+                  request.childGender === 'male'
+                    ? 'Nam'
+                    : request.childGender === 'female'
+                      ? 'Nữ'
+                      : request.childGender
+                }
+              />
+              <FieldView label="Dân tộc" value={request.childEthnicity} />
+              <FieldView label="Tỉnh / Thành phố" value={request.childProvinceName} />
+              <FieldView label="Xã / Phường" value={request.childWardName} />
+              <div className="md:col-span-2">
+                <FieldView label="Địa chỉ cụ thể của trẻ" value={request.childAddressDetail} />
+              </div>
+              <div className="md:col-span-2">
+                <TextAreaView
+                  label="Tình trạng sức khỏe hiện tại"
+                  value={request.childHealthStatus}
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
-              <InfoRow label="Họ tên"       value={req.senderName}/>
-              <InfoRow label="Quan hệ"      value={req.relationship}/>
-              <InfoRow label="Số điện thoại" value={req.senderPhone}/>
-              <InfoRow label="Email"         value={req.senderEmail}/>
-              <InfoRow label="Ngày gửi hồ sơ" value={formatDate(req.createdAt)}/>
-            </div>
-          </div>
+          </SectionCard>
 
-          {/* Card lý do */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-            <div className="flex items-center gap-2 mb-4 text-[#2c7a91]">
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-              </svg>
-              <h2 className="font-bold text-base">Lý do gửi trẻ</h2>
+          {/* Lý do gửi trẻ */}
+          <SectionCard title="Lý do gửi trẻ">
+            <div className="space-y-5">
+              <FieldView label="Lý do chính" value={request.reasonCategory} />
+              <TextAreaView
+                label="Mô tả chi tiết hoàn cảnh"
+                value={request.reasonDetail}
+              />
             </div>
-            <p className="text-sm text-slate-600 leading-relaxed italic bg-slate-50 rounded-xl p-4">
-              "{req.reason}"
-            </p>
-          </div>
+          </SectionCard>
 
           {/* Tài liệu */}
-          {req.documents?.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-              <div className="flex items-center gap-2 mb-4 text-[#2c7a91]">
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-                </svg>
-                <h2 className="font-bold text-base">Tài liệu đính kèm</h2>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {req.documents.map((doc, i) => (
-                  <span key={i} className="flex items-center gap-1.5 bg-blue-50 text-[#2c7a91] text-xs font-semibold px-3 py-1.5 rounded-lg border border-blue-100">
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-                    </svg>
-                    {doc}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+          <SectionCard title="Tài liệu giấy tờ cần thiết">
+            {request.documents.length > 0 ? (
+              <div className="space-y-4">
+                {request.documents.map((doc, index) => {
+                  const docName =
+                    typeof doc === 'string' ? doc : doc.name || `Tài liệu ${index + 1}`;
+                  const docUrl = typeof doc === 'string' ? '' : doc.url || '';
 
-        {/* Cột thao tác */}
-        <div className="col-span-12 lg:col-span-4 space-y-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-3">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4">Thao tác</p>
-            <button onClick={() => navigate(`${basePath}/tiep-nhan?requestId=${req.id}`)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2c7a91] text-white rounded-lg text-sm font-semibold hover:bg-[#1e5a6b] transition-colors">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-              </svg>
-              Tiếp nhận & Lập hồ sơ
-            </button>
-            <button onClick={() => setShowRejectModal(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-rose-300 text-rose-600 rounded-lg text-sm font-semibold hover:bg-rose-50 transition-colors">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
-              </svg>
-              Từ chối yêu cầu
-            </button>
-            <Link to={`${basePath}/yeu-cau`}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors">
-              ← Quay lại danh sách
-            </Link>
-          </div>
+                  return (
+                    <div
+                      key={`${docName}-${index}`}
+                      className="flex flex-col gap-3 rounded-2xl border border-[#E3ECF8] bg-[#F7FAFE] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="text-[15px] font-semibold text-[#334155]">
+                          {docName}
+                        </p>
+                        <p className="text-sm text-[#8FA0B8]">
+                          Hồ sơ đính kèm của yêu cầu gửi trẻ
+                        </p>
+                      </div>
 
-          {/* Trạng thái card */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Trạng thái hiện tại</p>
-            <div className={`px-4 py-3 rounded-xl text-sm font-bold text-center ${badge}`}>{label}</div>
-            <p className="text-xs text-slate-400 mt-2 text-center">Ngày tiếp nhận: {formatDate(req.createdAt)}</p>
-          </div>
+                      {docUrl ? (
+                        <a
+                          href={docUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex w-fit items-center justify-center rounded-xl bg-[#EAF3FF] px-4 py-2 text-sm font-semibold text-[#0D47A1] transition hover:bg-[#DCEBFF]"
+                        >
+                          Xem tài liệu
+                        </a>
+                      ) : (
+                        <span className="inline-flex w-fit items-center justify-center rounded-xl bg-[#EEF4FB] px-4 py-2 text-sm font-semibold text-[#64748B]">
+                          Đã tải lên
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-[#8FA0B8]">Chưa có tài liệu đính kèm.</p>
+            )}
+          </SectionCard>
         </div>
       </div>
-
-      {/* Modal từ chối */}
-      {showRejectModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[999] p-4">
-          <div className="bg-white rounded-2xl shadow-xl p-7 max-w-md w-full">
-            <h3 className="text-lg font-bold text-slate-800 mb-1">Từ chối yêu cầu</h3>
-            <p className="text-sm text-slate-500 mb-4">Hồ sơ: <strong>{req.childName}</strong> — #{req.code}</p>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Lý do từ chối</label>
-            <textarea value={rejectNote} onChange={e => setRejectNote(e.target.value)} rows={4}
-              className="w-full bg-slate-50 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-rose-300 resize-none"
-              placeholder="Nêu rõ lý do để người gửi bổ sung hồ sơ..."/>
-            <div className="flex gap-3 mt-4">
-              <button onClick={() => setShowRejectModal(false)}
-                className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50">
-                Hủy
-              </button>
-              <button onClick={() => { setShowRejectModal(false); navigate(`${basePath}/yeu-cau`); }}
-                className="flex-1 py-2.5 bg-rose-500 text-white rounded-lg text-sm font-bold hover:bg-rose-600">
-                Xác nhận từ chối
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -4,17 +4,6 @@
 
 Dự án này đã được cấu hình để sử dụng **mock data** thay vì API thật, giúp phát triển giao diện nhanh chóng mà không cần backend.
 
-## Tài khoản đăng nhập mẫu
-
-| Email | Mật khẩu | Vai trò | Tên hiển thị |
-|-------|----------|---------|--------------|
-| admin@btxh.vn | 123456 | Admin | Nguyễn Văn Admin |
-| sender1@btxh.vn | 123456 | Người gửi trẻ | Trần Thị Gửi |
-| adopter1@btxh.vn | 123456 | Người nhận nuôi | Lê Văn Nhận |
-| staff_reception@btxh.vn | 123456 | Cán bộ tiếp nhận | Phạm Thị Tiếp |
-| staff_adoption@btxh.vn | 123456 | Cán bộ nhận nuôi | Hoàng Văn Nuôi |
-| manager@btxh.vn | 123456 | Trưởng phòng | Đỗ Thị Quản |
-
 ## Dữ liệu mẫu có sẵn
 
 ### 1. Trẻ em (MOCK_CHILDREN)

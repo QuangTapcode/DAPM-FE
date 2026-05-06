@@ -1,200 +1,502 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Download, CalendarDays, UserCheck, UserRound, MapPin, Phone, IdCard, HeartPulse, FileText, BadgeInfo, } from 'lucide-react';
 import { useFetch } from '../../hooks/useFetch';
+import { useAuth } from '../../hooks/useAuth';
+import { formatDate } from '../../utils/formatDate';
+import {
+  STATUS,
+  getCurrentStep,
+  getProgressWidth,
+  normalizeStatus,
+} from '../../utils/statusHelpers';
+
 import receptionApi from '../../api/receptionApi';
-import { REQUEST_STATUS } from '../../utils/constants';
 
-const STATUS_META = {
-  [REQUEST_STATUS.PENDING]:      { label: 'Đang chờ duyệt', pill: 'bg-amber-50 text-amber-700 border border-amber-200',   dot: 'bg-amber-400',   icon: '⏳' },
-  [REQUEST_STATUS.MISSING_INFO]: { label: 'Thiếu thông tin', pill: 'bg-orange-50 text-orange-700 border border-orange-200', dot: 'bg-orange-400',  icon: '⚠️' },
-  [REQUEST_STATUS.APPROVED]:     { label: 'Đã duyệt',        pill: 'bg-emerald-50 text-emerald-700 border border-emerald-200', dot: 'bg-emerald-400', icon: '✅' },
-  [REQUEST_STATUS.REJECTED]:     { label: 'Từ chối',         pill: 'bg-red-50 text-red-700 border border-red-200',         dot: 'bg-red-400',     icon: '❌' },
-  [REQUEST_STATUS.INVALID]:      { label: 'Không hợp lệ',    pill: 'bg-slate-50 text-slate-600 border border-slate-200',   dot: 'bg-slate-400',   icon: '🚫' },
-};
+import StatusListPanel from '../../components/request-status/StatusListPanel';
+import StatusProgress from '../../components/request-status/StatusProgress';
+import DetailField from '../../components/request-status/DetailField';
+import LargeField from '../../components/request-status/LargeField';
+import DocumentCard from '../../components/request-status/DocumentCard';
 
-const TABS = [
-  { key: 'all', label: 'Tất cả' },
-  { key: REQUEST_STATUS.PENDING,      label: 'Đang chờ' },
-  { key: REQUEST_STATUS.MISSING_INFO, label: 'Thiếu TT' },
-  { key: REQUEST_STATUS.APPROVED,     label: 'Đã duyệt' },
-  { key: REQUEST_STATUS.REJECTED,     label: 'Từ chối'  },
+const STEPS = [
+  { key: 1, label: 'ĐÃ NỘP YÊU CẦU' },
+  { key: 2, label: 'ĐANG XEM XÉT' },
+  { key: 3, label: 'YÊU CẦU BỔ SUNG' },
+  { key: 4, label: 'ĐÃ DUYỆT' },
 ];
 
-function fmt(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const SENDER_TYPE_LABELS = {
+  CME: 'Cha hoặc mẹ ruột',
+  NTH: 'Người thân',
+  CQDP: 'Cơ quan địa phương',
+};
+
+function getStoredRequest() {
+  try {
+    const raw = sessionStorage.getItem('child-request-status');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 }
 
-const card28 = 'rounded-[28px] border border-[#E3ECF8] bg-white shadow-[0_14px_36px_rgba(42,74,122,0.08)]';
-
-function StatusPill({ status }) {
-  const m = STATUS_META[status] || STATUS_META[REQUEST_STATUS.PENDING];
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-semibold uppercase whitespace-nowrap ${m.pill}`}>
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${m.dot}`} />
-      {m.label}
-    </span>
-  );
+function getSenderTypeLabel(code) {
+  return SENDER_TYPE_LABELS[code] || code || 'Chưa cập nhật';
 }
 
-function RequestCard({ item }) {
-  const meta = STATUS_META[item.status] || STATUS_META[REQUEST_STATUS.PENDING];
-  const canEdit = [REQUEST_STATUS.PENDING, REQUEST_STATUS.MISSING_INFO].includes(item.status);
+function getReasonLabel(reason) {
+  const map = {
+    mo_coi: 'Trẻ mồ côi',
+    kinh_te: 'Hoàn cảnh kinh tế khó khăn',
+    suc_khoe: 'Cha / Mẹ bệnh nặng, không thể chăm sóc',
+    xa_hoi: 'Hoàn cảnh xã hội đặc biệt',
+    khac: 'Lý do khác',
+  };
 
-  return (
-    <div className={`${card28} overflow-hidden`}>
-      {/* header */}
-      <div className="flex items-start sm:items-center justify-between gap-3 px-6 py-5">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-[#EAF3FF] flex items-center justify-center text-xl flex-shrink-0">
-            👶
-          </div>
-          <div className="min-w-0">
-            <p className="font-semibold text-[15px] text-[#334155] truncate">
-              {item.childName || `Hồ sơ #${item.id}`}
-            </p>
-            <p className="text-[11px] text-[#8FA0B8] mt-0.5">Gửi ngày {fmt(item.createdAt)}</p>
-          </div>
-        </div>
-        <StatusPill status={item.status} />
-      </div>
+  return map[reason] || reason || 'Chưa cập nhật';
+}
 
-      {/* status messages */}
-      {item.status === REQUEST_STATUS.MISSING_INFO && item.note && (
-        <div className="mx-6 mb-4 p-4 bg-orange-50 border border-orange-200 rounded-2xl flex gap-3">
-          <span className="text-base flex-shrink-0 mt-0.5">⚠️</span>
-          <div>
-            <p className="text-xs font-bold text-orange-800 mb-1">Yêu cầu bổ sung thông tin</p>
-            <p className="text-xs text-orange-700 leading-relaxed">{item.note}</p>
-          </div>
-        </div>
-      )}
-      {item.status === REQUEST_STATUS.REJECTED && item.reason && (
-        <div className="mx-6 mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl flex gap-3">
-          <span className="text-base flex-shrink-0 mt-0.5">❌</span>
-          <div>
-            <p className="text-xs font-bold text-red-800 mb-1">Lý do từ chối</p>
-            <p className="text-xs text-red-700 leading-relaxed">{item.reason}</p>
-          </div>
-        </div>
-      )}
-      {item.status === REQUEST_STATUS.APPROVED && (
-        <div className="mx-6 mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex gap-3">
-          <span className="text-base flex-shrink-0 mt-0.5">✅</span>
-          <div>
-            <p className="text-xs font-bold text-emerald-800 mb-1">Hồ sơ đã được tiếp nhận</p>
-            <p className="text-xs text-emerald-700 leading-relaxed">
-              Trẻ đã được tiếp nhận vào trung tâm. Cảm ơn bạn đã tin tưởng chúng tôi.
-            </p>
-          </div>
-        </div>
-      )}
+function joinAddress(detail, wardName, provinceName) {
+  return [detail, wardName, provinceName].filter(Boolean).join(', ') || 'Chưa cập nhật';
+}
 
-      {/* footer */}
-      <div className="flex items-center justify-between px-6 py-3.5 bg-[#F5F9FE] border-t border-[#E3ECF8]">
-        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#8FA0B8]">
-          Cập nhật: {fmt(item.updatedAt || item.createdAt)}
-        </p>
-        <div className="flex items-center gap-3">
-          {item.childId && (
-            <Link to={`/gui-tre/tre/${item.childId}`}
-              className="text-xs font-semibold text-[#5F81BC] hover:text-[#0D47A1] transition-colors">
-              Xem trẻ →
-            </Link>
-          )}
-          {canEdit && (
-            <Link to={`/gui-tre/cap-nhat/${item.id}`}
-              className="inline-flex items-center gap-1.5 text-xs font-bold bg-[#0D47A1] hover:bg-[#1565C0] text-white px-4 py-1.5 rounded-2xl transition shadow-sm">
-              Cập nhật
-            </Link>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+function mapDocumentArrayToText(value) {
+  if (!value) return '-';
+
+  if (Array.isArray(value)) {
+    return value.length ? value.join(', ') : '-';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  return '-';
+}
+
+function mapGiayToArrayToGroups(giayTo = []) {
+  if (!Array.isArray(giayTo)) {
+    return {
+      birthCert: '-',
+      senderID: '-',
+      healthCert: '-',
+      otherDocs: '-',
+    };
+  }
+
+  const grouped = {
+    birthCert: [],
+    senderID: [],
+    healthCert: [],
+    otherDocs: [],
+  };
+
+  giayTo.forEach((item) => {
+    const type = item?.loaiGiayTo || item?.type || item?.documentType;
+    const name = item?.tenFile || item?.fileName || item?.name || '-';
+
+    if (grouped[type]) {
+      grouped[type].push(name);
+    } else {
+      grouped.otherDocs.push(name);
+    }
+  });
+
+  return {
+    birthCert: grouped.birthCert.length ? grouped.birthCert.join(', ') : '-',
+    senderID: grouped.senderID.length ? grouped.senderID.join(', ') : '-',
+    healthCert: grouped.healthCert.length ? grouped.healthCert.join(', ') : '-',
+    otherDocs: grouped.otherDocs.length ? grouped.otherDocs.join(', ') : '-',
+  };
+}
+
+function mapSnapshotToDisplay(snapshot) {
+  if (!snapshot) return null;
+
+  const documents =
+    snapshot.documents && !Array.isArray(snapshot.documents)
+      ? {
+        birthCert: mapDocumentArrayToText(snapshot.documents.birthCert),
+        senderID: mapDocumentArrayToText(snapshot.documents.senderID),
+        healthCert: mapDocumentArrayToText(snapshot.documents.healthCert),
+        otherDocs: mapDocumentArrayToText(snapshot.documents.otherDocs),
+      }
+      : mapGiayToArrayToGroups(snapshot.giayTo);
+
+  return {
+    id: snapshot.requestId || 'temp-request',
+    code: snapshot.requestId
+      ? `GT-${String(snapshot.requestId).padStart(6, '0')}`
+      : 'GT-2024-001',
+    title: 'Yêu cầu gửi trẻ',
+    createdAt: snapshot.createdAt || new Date().toISOString(),
+    status: snapshot.status || STATUS.CREATED,
+    approverName: 'Chưa có',
+    formData: {
+      senderName: snapshot.senderName || snapshot.nguoiGui?.hoTen || '',
+      senderTypeCode:
+        snapshot.senderTypeCode || snapshot.nguoiGui?.maLoaiNguoiGui || '',
+      senderNationalId:
+        snapshot.senderNationalId || snapshot.nguoiGui?.soCCCD || '',
+      senderPhone: snapshot.phone || snapshot.nguoiGui?.soDienThoai || '',
+      senderAddress: joinAddress(
+        snapshot.senderAddressDetail || snapshot.nguoiGui?.diaChiCuThe,
+        snapshot.senderWardName,
+        snapshot.senderProvinceName
+      ),
+
+      childName: snapshot.childName || snapshot.tre?.hoTen || '',
+      childDob: snapshot.childDob || snapshot.tre?.ngaySinh || '',
+      childGender: snapshot.childGender || snapshot.tre?.gioiTinh || '',
+      ethnicity: snapshot.ethnicity || snapshot.tre?.danToc || '',
+      childAddress: joinAddress(
+        snapshot.childAddressDetail || snapshot.tre?.diaChiCuThe,
+        snapshot.childWardName,
+        snapshot.childProvinceName
+      ),
+      healthStatus: snapshot.healthStatus || snapshot.tre?.tinhTrangSucKhoe || '',
+
+      reason: snapshot.reason || snapshot.lyDo?.maLyDo || '',
+      reasonDetail: snapshot.reasonDetail || snapshot.lyDo?.moTaChiTiet || '',
+
+      documents,
+    },
+  };
+}
+
+function mapApiItemToDisplay(item) {
+  if (!item) return null;
+
+  const nestedDocuments =
+    item.documents && !Array.isArray(item.documents)
+      ? {
+        birthCert: mapDocumentArrayToText(item.documents.birthCert),
+        senderID: mapDocumentArrayToText(item.documents.senderID),
+        healthCert: mapDocumentArrayToText(item.documents.healthCert),
+        otherDocs: mapDocumentArrayToText(item.documents.otherDocs),
+      }
+      : mapGiayToArrayToGroups(item.giayTo);
+
+  return {
+    id: item.id,
+    code: item.code || `GT-${String(item.id).padStart(6, '0')}`,
+    title: 'Yêu cầu gửi trẻ',
+    createdAt: item.createdAt,
+    status: item.status,
+    approverName:
+      item.approverName || item.reviewerName || item.approvedBy || 'Chưa có',
+    formData: {
+      senderName:
+        item.senderName || item.nguoiGui?.hoTen || item.applicantName || '',
+      senderTypeCode:
+        item.senderTypeCode || item.nguoiGui?.maLoaiNguoiGui || '',
+      senderNationalId:
+        item.senderNationalId || item.nguoiGui?.soCCCD || '',
+      senderPhone:
+        item.senderPhone || item.phone || item.nguoiGui?.soDienThoai || '',
+      senderAddress: joinAddress(
+        item.senderAddressDetail || item.nguoiGui?.diaChiCuThe || item.address,
+        item.senderWardName,
+        item.senderProvinceName
+      ),
+
+      childName: item.childName || item.tre?.hoTen || '',
+      childDob: item.childDob || item.tre?.ngaySinh || '',
+      childGender: item.childGender || item.tre?.gioiTinh || '',
+      ethnicity: item.ethnicity || item.tre?.danToc || '',
+      childAddress: joinAddress(
+        item.childAddressDetail || item.tre?.diaChiCuThe,
+        item.childWardName,
+        item.childProvinceName
+      ),
+      healthStatus: item.healthStatus || item.tre?.tinhTrangSucKhoe || '',
+
+      reason: item.reason || item.lyDo?.maLyDo || '',
+      reasonDetail: item.reasonDetail || item.lyDo?.moTaChiTiet || '',
+
+      documents: nestedDocuments,
+    },
+  };
 }
 
 export default function RequestStatus() {
-  const navigate = useNavigate();
-  const [filter, setFilter] = useState('all');
-  const { data: raw = [], loading } = useFetch(receptionApi.getAll);
-  const requests = Array.isArray(raw) ? raw : [];
+  const { user } = useAuth();
+  const location = useLocation();
 
-  const counts = TABS.reduce((acc, t) => {
-    acc[t.key] = t.key === 'all' ? requests.length : requests.filter(r => r.status === t.key).length;
-    return acc;
-  }, {});
+  const { data, loading } = useFetch(receptionApi.getAll, {
+    senderId: user?.id,
+  });
 
-  const filtered = (filter === 'all' ? requests : requests.filter(r => r.status === filter))
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const apiItems = data?.items || [];
+  const tempRequestFromState = location.state?.request || null;
+  const tempRequestFromStorage = getStoredRequest();
+
+  const mergedItems = useMemo(() => {
+    const mappedApiItems = apiItems.map(mapApiItemToDisplay);
+    const tempSource = tempRequestFromState || tempRequestFromStorage;
+    const mappedTemp = mapSnapshotToDisplay(tempSource);
+
+    if (!mappedTemp) return mappedApiItems;
+
+    const existed = mappedApiItems.some(
+      (item) =>
+        String(item.id) === String(mappedTemp.id) ||
+        String(item.code) === String(mappedTemp.code)
+    );
+
+    return existed ? mappedApiItems : [mappedTemp, ...mappedApiItems];
+  }, [apiItems, tempRequestFromState, tempRequestFromStorage]);
+
+  const [selectedId, setSelectedId] = useState(null);
+
+  useEffect(() => {
+    if (mergedItems.length > 0 && !selectedId) {
+      setSelectedId(mergedItems[0].id);
+    }
+  }, [mergedItems, selectedId]);
+
+  const selectedRequest =
+    mergedItems.find((item) => String(item.id) === String(selectedId)) ||
+    mergedItems[0] ||
+    null;
+
+  const canUpdate =
+    normalizeStatus(selectedRequest?.status) === 'missing_info';
+
+  if (loading && mergedItems.length === 0) {
+    return (
+      <div className="px-4 py-6">
+        <h1 className="mb-3 !text-[36px] font-bold !text-[#0D47A1]">
+          Trạng thái hồ sơ
+        </h1>
+        <p className="text-sm text-slate-400">Đang tải...</p>
+      </div>
+    );
+  }
+
+  if (mergedItems.length === 0) {
+    return (
+      <div className="px-4 py-6">
+        <h1 className="mb-3 !text-[36px] font-bold !text-[#0D47A1]">
+          Trạng thái hồ sơ
+        </h1>
+        <div className="rounded-[28px] border border-[#E3ECF8] bg-white px-6 py-16 text-center shadow-[0_10px_30px_rgba(38,68,120,0.06)]">
+          <p className="text-slate-400">Bạn chưa có yêu cầu nào.</p>
+          <Link
+            to="/gui-tre/tao-yeu-cau"
+            className="mt-3 inline-block text-sm font-medium text-[#2F80ED] hover:underline"
+          >
+            Tạo yêu cầu đầu tiên
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F5F9FE]">
-      <div className="mx-auto max-w-[1000px] px-4 py-6 sm:px-6 lg:px-8 space-y-5">
+      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <h1 className="!text-[36px] font-bold !text-[#0D47A1]">
+            Trạng thái hồ sơ
+          </h1>
+          <p className="mt-2 max-w-3xl text-[15px] leading-7 text-[#73839B]">
+            Theo dõi tình trạng yêu cầu gửi trẻ và các cập nhật xử lý từ trung tâm.
+          </p>
+        </div>
 
-        {/* header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
           <div>
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#8FA0B8] mb-2">
-              <button onClick={() => navigate('/gui-tre/dashboard')} className="hover:text-[#0D47A1] transition-colors">Tổng quan</button>
-              <span>/</span>
-              <span className="text-[#334155]">Trạng thái hồ sơ</span>
-            </div>
-            <h1 className="text-[36px] font-bold text-[#0D47A1] leading-none">Trạng thái hồ sơ</h1>
-            <p className="text-sm text-[#8FA0B8] mt-2">{requests.length} yêu cầu đã gửi</p>
+            <StatusListPanel
+              items={mergedItems}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+            />
           </div>
-          <Link to="/gui-tre/tao-yeu-cau"
-            className="self-start sm:self-auto flex-shrink-0 inline-flex items-center gap-2 bg-[#0D47A1] hover:bg-[#1565C0] text-white font-bold px-6 py-3 rounded-2xl transition shadow-md text-sm">
-            + Tạo yêu cầu mới
-          </Link>
-        </div>
 
-        {/* filter tabs */}
-        <div className={`${card28} p-1.5 flex gap-1 overflow-x-auto scrollbar-none`}>
-          {TABS.map(tab => (
-            <button key={tab.key} onClick={() => setFilter(tab.key)}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-[20px] text-sm font-semibold transition-all duration-200
-                ${filter === tab.key
-                  ? 'bg-[#0D47A1] text-white shadow-sm'
-                  : 'text-[#8FA0B8] hover:text-[#334155] hover:bg-[#F5F9FE]'}`}>
-              {tab.label}
-              {counts[tab.key] > 0 && (
-                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center
-                  ${filter === tab.key ? 'bg-white/20 text-white' : 'bg-[#EAF3FF] text-[#5F81BC]'}`}>
-                  {counts[tab.key]}
-                </span>
+          {selectedRequest && (
+            <div className="rounded-[28px] border border-[#E3ECF8] bg-white p-6 shadow-[0_14px_36px_rgba(42,74,122,0.08)] md:p-8">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#8EA0B8]">
+                    Chi tiết hồ sơ
+                  </p>
+                  <h3 className="mt-2 text-[30px] font-bold text-[#27406B]">
+                    Yêu cầu #{selectedRequest.code}
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#DCE8F7] bg-[#F3F8FF] px-5 text-sm font-semibold text-[#5C7396] transition hover:bg-[#EAF3FF]"
+                >
+                  <Download size={16} />
+                  Xuất PDF
+                </button>
+              </div>
+
+              <StatusProgress
+                steps={STEPS}
+                status={selectedRequest.status}
+                getCurrentStep={getCurrentStep}
+                getProgressWidth={getProgressWidth}
+              />
+
+              <div className="mt-8">
+                <div className="w-full rounded-[24px] border border-[#E7EEF9] bg-[#FCFEFF] p-5">
+                  <h4 className="mb-4 flex items-center gap-2 text-[15px] font-bold !text-[#0D47A1]">
+                    <UserRound size={16} />
+                    Thông tin hồ sơ
+                  </h4>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <DetailField
+                      label="Ngày tạo"
+                      value={formatDate(selectedRequest.createdAt)}
+                      icon={<CalendarDays size={16} />}
+                    />
+                    <DetailField
+                      label="Người duyệt"
+                      value={selectedRequest.approverName}
+                      icon={<UserCheck size={16} />}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 rounded-[24px] border border-[#E7EEF9] bg-white p-5">
+                <h4 className="mb-5 text-[15px] font-bold !text-[#0D47A1]">
+                  Thông tin người gửi trẻ
+                </h4>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <DetailField
+                    label="Họ và tên"
+                    value={selectedRequest.formData?.senderName}
+                    icon={<UserRound size={16} />}
+                  />
+                  <DetailField
+                    label="Loại người gửi"
+                    value={getSenderTypeLabel(selectedRequest.formData?.senderTypeCode)}
+                    icon={<BadgeInfo size={16} />}
+                  />
+                  <DetailField
+                    label="Số CCCD"
+                    value={selectedRequest.formData?.senderNationalId}
+                    icon={<IdCard size={16} />}
+                  />
+                  <DetailField
+                    label="Số điện thoại"
+                    value={selectedRequest.formData?.senderPhone}
+                    icon={<Phone size={16} />}
+                  />
+                  <div className="md:col-span-2">
+                    <DetailField
+                      label="Địa chỉ cụ thể"
+                      value={selectedRequest.formData?.senderAddress}
+                      icon={<MapPin size={16} />}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 rounded-[24px] border border-[#E7EEF9] bg-white p-5">
+                <h4 className="mb-5 text-[15px] font-bold !text-[#0D47A1]">
+                  Thông tin trẻ em
+                </h4>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <DetailField
+                    label="Họ và tên trẻ"
+                    value={selectedRequest.formData?.childName}
+                    icon={<UserRound size={16} />}
+                  />
+                  <DetailField
+                    label="Giới tính"
+                    value={selectedRequest.formData?.childGender}
+                  />
+                  <DetailField
+                    label="Ngày sinh"
+                    value={selectedRequest.formData?.childDob}
+                    icon={<CalendarDays size={16} />}
+                  />
+                  <DetailField
+                    label="Dân tộc"
+                    value={selectedRequest.formData?.ethnicity}
+                  />
+                  <div className="md:col-span-2">
+                    <DetailField
+                      label="Địa chỉ của trẻ"
+                      value={selectedRequest.formData?.childAddress}
+                      icon={<MapPin size={16} />}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <LargeField
+                      label="Tình trạng sức khỏe hiện tại"
+                      value={selectedRequest.formData?.healthStatus}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 rounded-[24px] border border-[#E7EEF9] bg-white p-5">
+                <h4 className="mb-5 text-[15px] font-bold !text-[#0D47A1]">
+                  Lý do gửi trẻ
+                </h4>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <DetailField
+                    label="Lý do chính"
+                    value={getReasonLabel(selectedRequest.formData?.reason)}
+                    icon={<FileText size={16} />}
+                  />
+                  <LargeField
+                    label="Mô tả chi tiết"
+                    value={selectedRequest.formData?.reasonDetail}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-8 rounded-[24px] border border-[#E7EEF9] bg-white p-5">
+                <h4 className="mb-5 text-[15px] font-bold !text-[#0D47A1]">
+                  Tài liệu đã tải lên
+                </h4>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <DocumentCard
+                    title="Giấy khai sinh"
+                    value={selectedRequest.formData?.documents?.birthCert || '-'}
+                  />
+                  <DocumentCard
+                    title="CCCD/CMND người gửi"
+                    value={selectedRequest.formData?.documents?.senderID || '-'}
+                  />
+                  <DocumentCard
+                    title="Giấy sức khỏe"
+                    value={selectedRequest.formData?.documents?.healthCert || '-'}
+                  />
+                  <DocumentCard
+                    title="Giấy tờ khác"
+                    value={selectedRequest.formData?.documents?.otherDocs || '-'}
+                  />
+                </div>
+              </div>
+
+              {canUpdate && (
+                <div className="mt-8">
+                  <Link
+                    to={`/gui-tre/cap-nhat/${selectedRequest.id}`}
+                    className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#2F80ED] px-5 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(47,128,237,0.22)] transition hover:brightness-105"
+                  >
+                    Cập nhật hồ sơ
+                  </Link>
+                </div>
               )}
-            </button>
-          ))}
+            </div>
+          )}
         </div>
-
-        {/* content */}
-        {loading ? (
-          <div className="py-20 flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-4 border-[#0D47A1]/20 border-t-[#0D47A1] rounded-full animate-spin" />
-            <p className="text-sm text-[#8FA0B8]">Đang tải danh sách...</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className={`${card28} py-20 text-center px-6`}>
-            <div className="text-6xl mb-4">{filter === 'all' ? '📭' : (STATUS_META[filter]?.icon || '🔍')}</div>
-            <p className="font-bold text-[#334155] text-lg mb-2">
-              {filter === 'all' ? 'Chưa có yêu cầu nào' : 'Không có hồ sơ phù hợp'}
-            </p>
-            <p className="text-sm text-[#8FA0B8] mb-6 max-w-xs mx-auto">
-              {filter === 'all' ? 'Tạo yêu cầu giao trẻ đầu tiên để bắt đầu quy trình.' : 'Không có hồ sơ nào phù hợp với bộ lọc này.'}
-            </p>
-            {filter === 'all' && (
-              <Link to="/gui-tre/tao-yeu-cau"
-                className="inline-flex items-center gap-2 bg-[#0D47A1] text-white font-bold px-6 py-3 rounded-2xl hover:bg-[#1565C0] transition text-sm">
-                + Tạo yêu cầu đầu tiên
-              </Link>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filtered.map(item => <RequestCard key={item.id} item={item} />)}
-          </div>
-        )}
       </div>
     </div>
   );

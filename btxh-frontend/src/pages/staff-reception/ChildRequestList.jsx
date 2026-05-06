@@ -1,119 +1,304 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useBasePath } from '../../hooks/useBasePath';
-import { useFetch } from '../../hooks/useFetch';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import receptionApi from '../../api/receptionApi';
 import { formatDate } from '../../utils/formatDate';
 
-const avatarUrl = (seed = 'child', bg = 'b6e3f4') =>
-  `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${bg}&backgroundType=solid`;
-
-const DEMO_REQUESTS = [
-  { id: 1, code: 'HS-9022', childName: 'Nguyễn Văn Bình', childAge: 8, childGender: 'male', childDob: '2016-08-15', avatar: avatarUrl('Binh','b6e3f4'), senderName: 'Trần Thị Lan', relationship: 'Mẹ đẻ', senderPhone: '0901 234 567', createdAt: '2024-06-12', status: 'PENDING' },
-  { id: 2, code: 'HS-9021', childName: 'Lê Minh Anh', childAge: 5, childGender: 'female', childDob: '2019-03-20', avatar: avatarUrl('Anh','ffd5dc'), senderName: 'Lê Quang Hùng', senderPhone: '0912 345 678', createdAt: '2024-05-11', status: 'APPROVED' },
-  { id: 3, code: 'HS-9020', childName: 'Trần Hoàng Long', childAge: 10, childGender: 'male', childDob: '2014-07-05', avatar: avatarUrl('Long','c0aede'), senderName: 'Phạm Văn Đức', senderPhone: '0978 456 789', createdAt: '2024-05-10', status: 'REJECTED' },
-  { id: 4, code: 'HS-9019', childName: 'Phạm Thị Mai', childAge: 7, childGender: 'female', childDob: '2017-12-03', avatar: avatarUrl('Mai','fce4ec'), senderName: 'Nguyễn Văn Toàn', senderPhone: '0935 111 222', createdAt: '2024-04-28', status: 'PENDING' },
-  { id: 5, code: 'HS-9018', childName: 'Võ Đức Huy', childAge: 9, childGender: 'male', childDob: '2015-06-22', avatar: avatarUrl('Huy','c8e6c9'), senderName: 'Võ Thị Hồng', senderPhone: '0987 654 321', createdAt: '2024-04-15', status: 'APPROVED' },
-  { id: 6, code: 'HS-9017', childName: 'Đặng Ngọc Hân', childAge: 4, childGender: 'female', childDob: '2020-09-14', avatar: avatarUrl('Han','fff9c4'), senderName: 'Đặng Văn Khoa', senderPhone: '0911 222 333', createdAt: '2024-03-20', status: 'PENDING' },
-  { id: 7, code: 'HS-9016', childName: 'Huỳnh Gia Bảo', childAge: 6, childGender: 'male', childDob: '2018-01-30', avatar: avatarUrl('Bao','bbdefb'), senderName: 'Trần Thị Nga', senderPhone: '0966 777 888', createdAt: '2024-03-05', status: 'APPROVED' },
-];
-
-const STATUS_LABEL = { PENDING: 'Chờ duyệt', APPROVED: 'Đã tiếp nhận', REJECTED: 'Cần bổ sung' };
-const STATUS_PILL  = {
-  PENDING:  'bg-amber-50 text-amber-700 border border-amber-200',
-  APPROVED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  REJECTED: 'bg-red-50 text-red-700 border border-red-200',
-};
-const STATUS_DOT = { PENDING: 'bg-amber-400', APPROVED: 'bg-emerald-400', REJECTED: 'bg-red-400' };
-
 const TABS = [
-  { label: 'Tất cả',      value: '' },
-  { label: 'Chờ duyệt',   value: 'PENDING' },
-  { label: 'Đã duyệt',    value: 'APPROVED' },
-  { label: 'Cần bổ sung', value: 'REJECTED' },
+  { label: 'Tất cả', value: '' },
+  { label: 'Chờ duyệt', value: 'pending' },
+  { label: 'Đã tiếp nhận', value: 'approved' },
+  { label: 'Cần bổ sung', value: 'rejected' },
 ];
 
-const card28 = 'rounded-[28px] border border-[#E3ECF8] bg-white shadow-[0_14px_36px_rgba(42,74,122,0.08)]';
+const STATUS_LABEL = {
+  pending: 'Chờ duyệt',
+  approved: 'Đã tiếp nhận',
+  rejected: 'Cần bổ sung',
+};
+
+const STATUS_PILL = {
+  pending: 'bg-amber-50 text-amber-700 border border-amber-200',
+  approved: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  rejected: 'bg-red-50 text-red-700 border border-red-200',
+};
+
+function normalizeStatus(status) {
+  return String(status || 'pending').toLowerCase();
+}
+
+function calculateAge(dateString) {
+  if (!dateString) return '—';
+  const dob = new Date(dateString);
+  if (Number.isNaN(dob.getTime())) return '—';
+
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const m = now.getMonth() - dob.getMonth();
+
+  if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age -= 1;
+  return age >= 0 ? age : '—';
+}
+
+function mapRequest(item) {
+  return {
+    ...item,
+    status: normalizeStatus(item.status),
+    code: item.code || `HS-${String(item.id).padStart(4, '0')}`,
+    childAge: calculateAge(item.childBirthDate),
+    childGender: item.childGender || 'unknown',
+    senderPhone: item.senderPhone || '—',
+    relationship: item.relationship || '—',
+  };
+}
+
+function ActionButton({ request, onOpenDetail, onCreateProfile }) {
+  if (request.status === 'pending') {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenDetail(request.id);
+        }}
+        className="inline-flex items-center rounded-xl bg-[#0D47A1] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#0b3d89]"
+      >
+        Duyệt hồ sơ
+      </button>
+    );
+  }
+
+  if (request.status === 'approved') {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onCreateProfile(request.id);
+        }}
+        className="inline-flex items-center rounded-xl border border-[#D8E6F5] bg-white px-3 py-2 text-xs font-semibold text-[#0D47A1] transition hover:border-[#0D47A1] hover:bg-[#F8FBFF]"
+      >
+        Tạo hồ sơ
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenDetail(request.id);
+      }}
+      className="inline-flex items-center rounded-xl border border-[#F3D0D0] bg-white px-3 py-2 text-xs font-semibold text-[#C24141] transition hover:bg-red-50"
+    >
+      Xem chi tiết
+    </button>
+  );
+}
 
 export default function ChildRequestList() {
-  const [tab, setTab] = useState('');
-  const { data, loading } = useFetch(receptionApi.getAll);
-  const basePath = useBasePath();
+  const navigate = useNavigate();
 
-  const items    = (data?.items?.length > 0) ? data.items : DEMO_REQUESTS;
-  const filtered = tab ? items.filter(r => r.status === tab) : items;
+  const [tab, setTab] = useState('');
+  const [keyword, setKeyword] = useState('');
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function fetchRequests() {
+      try {
+        setLoading(true);
+        setError('');
+
+        const response = await receptionApi.getAll({
+          page: 1,
+          limit: 999,
+          status: tab || undefined,
+        });
+
+        if (ignore) return;
+        setItems(response.items || []);
+      } catch (err) {
+        if (ignore) return;
+        setError(err.message || 'Không thể tải danh sách yêu cầu.');
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    fetchRequests();
+
+    return () => {
+      ignore = true;
+    };
+  }, [tab]);
+
+  const filteredItems = useMemo(() => {
+    const normalized = (items || []).map(mapRequest);
+    const q = keyword.trim().toLowerCase();
+
+    if (!q) return normalized;
+
+    return normalized.filter((item) =>
+      [
+        item.code,
+        item.childName,
+        item.senderName,
+        item.senderPhone,
+        item.relationship,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q))
+    );
+  }, [items, keyword]);
+
+  const openDetail = (id) => {
+    navigate(`/can-bo-tiep-nhan/yeu-cau/${id}`);
+  };
+
+  const createProfile = (id) => {
+    navigate(`/can-bo-tiep-nhan/tao-ho-so/${id}`);
+  };
 
   return (
     <div className="min-h-screen bg-[#F5F9FE]">
       <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 space-y-5">
-
-        {/* Tiêu đề */}
         <div>
-          <h1 className="text-[36px] font-bold text-[#0D47A1] leading-none">Danh sách yêu cầu gửi trẻ</h1>
-          <p className="text-sm text-[#8FA0B8] mt-2">
-            Tổng <span className="font-bold text-[#334155]">{items.length}</span> yêu cầu —{' '}
-            Chờ duyệt: <span className="font-bold text-[#0D47A1]">{items.filter(r => r.status === 'PENDING').length}</span>
-          </p>
+          <h1 className="text-[36px] font-bold text-[#0D47A1] leading-none">
+            Danh sách yêu cầu gửi trẻ
+          </h1>
         </div>
 
-        <div className={`${card28} overflow-hidden`}>
-          {/* Tabs */}
-          <div className="flex items-center gap-2 px-6 pt-5 pb-4 border-b border-[#E3ECF8]">
-            {TABS.map(t => (
-              <button key={t.value} onClick={() => setTab(t.value)}
-                className={`px-4 py-1.5 rounded-[20px] text-xs font-semibold transition-all ${
-                  tab === t.value
+        <div className="rounded-[28px] border border-[#E3ECF8] bg-white shadow-[0_14px_36px_rgba(42,74,122,0.08)] overflow-hidden">
+          <div className="flex flex-col gap-4 border-b border-[#E3ECF8] px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              {TABS.map((item) => (
+                <button
+                  key={item.value}
+                  onClick={() => setTab(item.value)}
+                  className={`px-4 py-2 rounded-[20px] text-xs font-semibold transition-all ${tab === item.value
                     ? 'bg-[#0D47A1] text-white shadow-sm'
                     : 'bg-[#F5F9FE] text-[#8FA0B8] hover:text-[#334155]'
-                }`}
-              >{t.label}</button>
-            ))}
-            <span className="ml-auto text-[11px] font-bold uppercase tracking-[0.1em] text-[#8FA0B8]">{filtered.length} kết quả</span>
+                    }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="w-full max-w-[360px]">
+              <input
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder="Tìm theo mã hồ sơ, tên trẻ, người giao..."
+                className="w-full rounded-2xl border border-[#D8E6F5] bg-white px-4 py-3 text-sm text-[#334155] outline-none transition focus:border-[#0D47A1] focus:ring-4 focus:ring-blue-100"
+              />
+            </div>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-16">
-              <div className="w-8 h-8 border-4 border-[#0D47A1]/20 border-t-[#0D47A1] rounded-full animate-spin"/>
+              <div className="w-8 h-8 border-4 border-[#0D47A1]/20 border-t-[#0D47A1] rounded-full animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="px-6 py-12 text-center text-red-600 font-semibold">
+              {error}
+            </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="px-6 py-12 text-center text-sm text-[#8FA0B8]">
+              Không có yêu cầu nào phù hợp.
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[1240px] text-sm">
                 <thead>
-                  <tr className="border-b border-[#F0F5FC]">
-                    {['Mã hồ sơ','Trẻ','Người giao','SĐT','Ngày gửi','Trạng thái','Thao tác'].map(h => (
-                      <th key={h} className="px-6 pb-3 pt-4 text-left text-[11px] font-bold uppercase tracking-[0.14em] text-[#8FA0B8]">{h}</th>
+                  <tr className="border-b border-[#F0F5FC] bg-[#FBFDFF]">
+                    {[
+                      'Mã hồ sơ',
+                      'Tên trẻ',
+                      'Tuổi',
+                      'Giới tính',
+                      'Người giao',
+                      'Quan hệ',
+                      'SĐT',
+                      'Ngày gửi',
+                      'Trạng thái',
+                      'Thao tác',
+                    ].map((heading) => (
+                      <th
+                        key={heading}
+                        className="px-6 py-4 text-left text-[11px] font-bold uppercase tracking-[0.14em] text-[#8FA0B8]"
+                      >
+                        {heading}
+                      </th>
                     ))}
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-[#F0F5FC]">
-                  {filtered.length === 0 ? (
-                    <tr><td colSpan={7} className="py-12 text-center text-[#8FA0B8] text-sm">Không có yêu cầu nào.</td></tr>
-                  ) : filtered.map(r => (
-                    <tr key={r.id} className="hover:bg-[#F5F9FE] transition-colors group">
+                  {filteredItems.map((request) => (
+                    <tr
+                      key={request.id}
+                      onClick={() => openDetail(request.id)}
+                      className="cursor-pointer transition-colors hover:bg-[#F8FBFF]"
+                    >
                       <td className="px-6 py-4">
-                        <span className="px-2 py-0.5 bg-[#EAF3FF] text-[#0D47A1] rounded-lg text-[11px] font-bold">#{r.code}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2.5">
-                          <img src={r.avatar} alt={r.childName} className="w-9 h-9 rounded-full object-cover bg-[#EAF3FF] shrink-0"/>
-                          <div>
-                            <p className="font-semibold text-[15px] text-[#334155]">{r.childName}</p>
-                            <p className="text-[11px] text-[#8FA0B8]">{r.childAge} tuổi · {r.childGender === 'male' ? 'Nam' : 'Nữ'}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-[#334155] text-sm">{r.senderName}</td>
-                      <td className="px-6 py-4 text-[#8FA0B8] text-xs">{r.senderPhone || '—'}</td>
-                      <td className="px-6 py-4 text-[#8FA0B8] text-xs">{formatDate(r.createdAt)}</td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-semibold uppercase whitespace-nowrap ${STATUS_PILL[r.status] || 'bg-slate-50 text-slate-500 border border-slate-200'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[r.status] || 'bg-slate-400'}`}/>
-                          {STATUS_LABEL[r.status] || r.status}
+                        <span className="inline-flex rounded-lg bg-[#EAF3FF] px-2.5 py-1 text-[11px] font-bold text-[#0D47A1]">
+                          #{request.code}
                         </span>
                       </td>
+
+                      <td className="px-6 py-4 font-semibold text-[#334155]">
+                        {request.childName}
+                      </td>
+
+                      <td className="px-6 py-4 text-[#64748B]">
+                        {request.childAge}
+                      </td>
+
+                      <td className="px-6 py-4 text-[#64748B]">
+                        {request.childGender === 'female'
+                          ? 'Nữ'
+                          : request.childGender === 'male'
+                            ? 'Nam'
+                            : '—'}
+                      </td>
+
+                      <td className="px-6 py-4 text-[#334155]">
+                        {request.senderName}
+                      </td>
+
+                      <td className="px-6 py-4 text-[#64748B]">
+                        {request.relationship}
+                      </td>
+
+                      <td className="px-6 py-4 text-[#64748B]">
+                        {request.senderPhone}
+                      </td>
+
+                      <td className="px-6 py-4 text-[#64748B]">
+                        {formatDate(request.createdAt)}
+                      </td>
+
                       <td className="px-6 py-4">
-                        <Link to={`${basePath}/chi-tiet?id=${r.id}`}
-                          className="text-[#5F81BC] text-xs font-semibold hover:text-[#0D47A1] transition-colors">Chi tiết →</Link>
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold whitespace-nowrap ${STATUS_PILL[request.status] ||
+                            'bg-slate-50 text-slate-700 border border-slate-200'
+                            }`}
+                        >
+                          {STATUS_LABEL[request.status] || request.status}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <ActionButton
+                          request={request}
+                          onOpenDetail={openDetail}
+                          onCreateProfile={createProfile}
+                        />
                       </td>
                     </tr>
                   ))}

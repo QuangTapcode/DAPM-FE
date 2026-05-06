@@ -10,15 +10,14 @@
  *  success   — xanh lá               dùng cho Duyệt
  *  ghost     — trong suốt xám        dùng cho icon-only, breadcrumb action
  */
-
 const VARIANTS = {
-  primary:   'bg-[#1d4ed8] hover:bg-[#1e40af] text-white shadow-sm',
-  accent:    'bg-[#f97316] hover:bg-[#ea580c] text-white shadow-sm',
+  primary: 'btn-primary-gradient text-white shadow-sm',
+  accent: 'btn-accent-gradient text-white shadow-sm',
   secondary: 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 shadow-sm',
-  outline:   'bg-white hover:bg-blue-50 text-[#1d4ed8] border border-[#1d4ed8]',
-  danger:    'bg-[#dc2626] hover:bg-[#b91c1c] text-white shadow-sm',
-  success:   'bg-[#16a34a] hover:bg-[#15803d] text-white shadow-sm',
-  ghost:     'bg-transparent hover:bg-gray-100 text-gray-600',
+  outline: 'bg-white hover:bg-blue-50 text-[var(--c-primary-start)] border border-[var(--c-primary-start)]',
+  danger: 'bg-[#dc2626] hover:bg-[#b91c1c] text-white shadow-sm',
+  success: 'bg-[#16a34a] hover:bg-[#15803d] text-white shadow-sm',
+  ghost: 'bg-transparent hover:bg-gray-100 text-gray-600',
 };
 
 const SIZES = {

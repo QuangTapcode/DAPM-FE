@@ -25,8 +25,8 @@ export const REQUEST_STATUS_LABEL = {
 };
 
 export const ROLE_REDIRECT = {
-  [ROLES.SENDER]: '/gui-tre/dashboard',
-  [ROLES.ADOPTER]: '/nhan-nuoi/trang-thai',
+  [ROLES.SENDER]: '/',
+  [ROLES.ADOPTER]: '/',
   [ROLES.STAFF_RECEPTION]: '/can-bo-tiep-nhan/dashboard',
   [ROLES.STAFF_ADOPTION]: '/can-bo-nhan-nuoi/dashboard',
   [ROLES.MANAGER]: '/truong-phong/dashboard',
