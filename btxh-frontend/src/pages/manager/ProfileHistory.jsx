@@ -178,7 +178,7 @@ export default function ProfileHistory() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="mx-auto max-w-[1720px] space-y-6 px-5 py-8 sm:px-8 lg:px-10">
             <header className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h1 className="mt-3 text-3xl font-bold text-slate-950">Lịch sử hồ sơ</h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">

@@ -256,8 +256,8 @@ export default function ProfileApproval() {
   ];
 
   return (
-    <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">
+    <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8 ">
+      <div className="mx-auto  max-w-[1720px]">
         <div className="card mb-4 border border-[var(--c-border-light)] p-5 sm:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
